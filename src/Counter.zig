@@ -26,7 +26,7 @@ pub fn get(self: *Self) u64 {
     return self.value.load(.SeqCst);
 }
 
-pub fn set(self: *Self, value: anytype) u64 {
+pub fn set(self: *Self, value: anytype) void {
     if (!comptime std.meta.trait.isNumber(@TypeOf(value))) {
         @compileError("can't set a non-number");
     }
@@ -34,7 +34,12 @@ pub fn set(self: *Self, value: anytype) u64 {
     _ = self.value.store(@intCast(u64, value), .SeqCst);
 }
 
-test "counter" {
+pub fn writePrometheus(self: *Self, writer: anytype, prefix: []const u8) !void {
+    const value = self.get();
+    try writer.print("{s} {d}", .{ prefix, value });
+}
+
+test "inc/add/dec/set/get" {
     var counter = @This(){};
 
     try testing.expectEqual(@as(u64, 0), counter.get());
@@ -47,4 +52,19 @@ test "counter" {
 
     counter.dec();
     try testing.expectEqual(@as(u64, 200), counter.get());
+
+    counter.set(43);
+    try testing.expectEqual(@as(u64, 43), counter.get());
+}
+
+test "writePrometheus" {
+    var counter = @This(){};
+    counter.set(340);
+
+    var buffer = std.ArrayList(u8).init(std.testing.allocator);
+    defer buffer.deinit();
+
+    try counter.writePrometheus(buffer.writer(), "mycounter");
+
+    try testing.expectEqualStrings("mycounter 340", buffer.items);
 }
