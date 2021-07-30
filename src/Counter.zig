@@ -22,7 +22,7 @@ pub fn add(self: *Self, value: anytype) void {
     _ = self.value.fetchAdd(@intCast(u64, value), .SeqCst);
 }
 
-pub fn get(self: *Self) u64 {
+pub fn get(self: *const Self) u64 {
     return self.value.load(.SeqCst);
 }
 
@@ -34,7 +34,7 @@ pub fn set(self: *Self, value: anytype) void {
     _ = self.value.store(@intCast(u64, value), .SeqCst);
 }
 
-pub fn writePrometheus(self: *Self, writer: anytype, prefix: []const u8) !void {
+pub fn writePrometheus(self: *const Self, writer: anytype, prefix: []const u8) !void {
     const value = self.get();
     try writer.print("{s} {d}", .{ prefix, value });
 }
