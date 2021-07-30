@@ -79,14 +79,10 @@ pub const Registry = struct {
         std.sort.sort([]const u8, keys, {}, stringLessThan);
 
         // Write each metric in key order
-        for (keys) |key, i| {
+        for (keys) |key| {
             const value = map.get(key) orelse unreachable;
 
             try value.writePrometheus(writer, key);
-
-            if (i + 1 < keys.len) {
-                try writer.writeAll("\n");
-            }
         }
     }
 };
@@ -135,6 +131,7 @@ test "registry writePrometheus" {
         \\http_requests0 0
         \\http_requests1 2
         \\http_requests2 4
+        \\
     ;
 
     try testing.expectEqualStrings(exp, buffer.items);

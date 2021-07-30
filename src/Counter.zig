@@ -36,7 +36,7 @@ pub fn set(self: *Self, value: anytype) void {
 
 pub fn writePrometheus(self: *const Self, writer: anytype, prefix: []const u8) !void {
     const value = self.get();
-    try writer.print("{s} {d}", .{ prefix, value });
+    try writer.print("{s} {d}\n", .{ prefix, value });
 }
 
 test "inc/add/dec/set/get" {
@@ -66,5 +66,5 @@ test "writePrometheus" {
 
     try counter.writePrometheus(buffer.writer(), "mycounter");
 
-    try testing.expectEqualStrings("mycounter 340", buffer.items);
+    try testing.expectEqualStrings("mycounter 340\n", buffer.items);
 }
