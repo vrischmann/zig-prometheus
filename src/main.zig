@@ -173,6 +173,22 @@ test "registry writePrometheus" {
     }
 }
 
+test "registry options" {
+    var arena = heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    var registry = try Registry(.{ .max_metrics = 1, .max_name_len = 4 }).create(&arena.allocator);
+    defer registry.destroy();
+
+    {
+        try testing.expectError(error.NameTooLong, registry.getOrCreateCounter("hello"));
+        _ = try registry.getOrCreateCounter("foo");
+    }
+
+    {
+        try testing.expectError(error.TooManyMetrics, registry.getOrCreateCounter("bar"));
+    }
+}
+
 test "" {
     testing.refAllDecls(@This());
 }
