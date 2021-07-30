@@ -73,20 +73,11 @@ pub const Registry = struct {
 
 var DefaultRegistry: Registry = undefined;
 
-pub fn getCounter(comptime name: []const u8) GetCounterError!?*Counter {
-    return DefaultRegistry.getCounter(name);
+pub fn getOrCreateCounter(comptime format: []const u8, values: anytype) GetCounterError!*Counter {
+    return DefaultRegistry.getOrCreateCounter(format, values);
 }
 
-pub const GetCounterAllocError = error{};
-
-pub fn getCounterAlloc(allocator: *mem.Allocator, name: []const u8, labels: anytype) GetCounterAllocError!?*Counter {
-    _ = allocator;
-    _ = name;
-    _ = labels;
-    return null;
-}
-
-test "registry init" {
+test "registry getOrCreateCounter" {
     var registry: Registry = undefined;
     try registry.init(testing.allocator);
     defer registry.deinit();
@@ -101,6 +92,17 @@ test "registry init" {
 
     var counter = try registry.getOrCreateCounter(key, .{500});
     try testing.expectEqual(@as(u64, 10), counter.get());
+}
+
+test "getOrCreateCounter" {
+    try DefaultRegistry.init(testing.allocator);
+    defer DefaultRegistry.deinit();
+
+    var counter = try getOrCreateCounter("http_requests", .{});
+    counter.inc();
+
+    counter = try getOrCreateCounter("http_requests", .{});
+    try testing.expectEqual(@as(u64, 1), counter.get());
 }
 
 test "" {
