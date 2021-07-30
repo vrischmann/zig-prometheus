@@ -1,4 +1,6 @@
 const std = @import("std");
+const fmt = std.fmt;
+const heap = std.heap;
 const mem = std.mem;
 const testing = std.testing;
 
@@ -23,31 +25,39 @@ fn MetricMap(comptime Value: type) type {
 }
 
 pub const GetCounterError = error{
+    NameTooLong,
     OutOfMemory,
 };
+
+const max_name_length = 1024;
 
 pub const Registry = struct {
     const Self = @This();
 
     const CounterMap = MetricMap(Counter);
 
+    arena: heap.ArenaAllocator,
     allocator: *mem.Allocator,
+
     counters: CounterMap,
 
     pub fn init(self: *Self, allocator: *mem.Allocator) !void {
         self.* = .{
-            .allocator = allocator,
+            .allocator = undefined,
+            .arena = heap.ArenaAllocator.init(allocator),
             .counters = CounterMap.init(),
         };
+        self.allocator = &self.arena.allocator;
     }
 
     pub fn deinit(self: *Self) void {
-        self.counters.deinit(self.allocator);
+        self.arena.deinit();
     }
 
-    pub fn getOrCreateCounter(self: *Self, comptime name: []const u8) GetCounterError!*Counter {
-        _ = self;
-        _ = name;
+    pub fn getOrCreateCounter(self: *Self, comptime format: []const u8, values: anytype) GetCounterError!*Counter {
+        if (format.len > max_name_length) return error.NameTooLong;
+
+        const name = try fmt.allocPrint(self.allocator, format, values);
 
         var gop = try self.counters.map.getOrPut(self.allocator, name);
         if (!gop.found_existing) {
@@ -81,15 +91,15 @@ test "registry init" {
     try registry.init(testing.allocator);
     defer registry.deinit();
 
-    const key = "http_requests{status=\"500\"}";
+    const key = "http_requests{{status=\"{d}\"}}";
 
     var i: usize = 0;
     while (i < 10) : (i += 1) {
-        var counter = try registry.getOrCreateCounter(key);
+        var counter = try registry.getOrCreateCounter(key, .{500});
         counter.inc();
     }
 
-    var counter = try registry.getOrCreateCounter(key);
+    var counter = try registry.getOrCreateCounter(key, .{500});
     try testing.expectEqual(@as(u64, 10), counter.get());
 }
 
