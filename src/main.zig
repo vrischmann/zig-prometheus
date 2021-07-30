@@ -39,12 +39,14 @@ pub const Registry = struct {
     arena: heap.ArenaAllocator,
     allocator: *mem.Allocator,
 
+    mutex: std.Thread.Mutex,
     counters: CounterMap,
 
     pub fn init(self: *Self, allocator: *mem.Allocator) !void {
         self.* = .{
             .allocator = undefined,
             .arena = heap.ArenaAllocator.init(allocator),
+            .mutex = .{},
             .counters = CounterMap.init(),
         };
         self.allocator = &self.arena.allocator;
@@ -55,6 +57,9 @@ pub const Registry = struct {
     }
 
     pub fn getOrCreateCounter(self: *Self, comptime format: []const u8, values: anytype) GetCounterError!*Counter {
+        const held = self.mutex.acquire();
+        defer held.release();
+
         if (format.len > max_name_length) return error.NameTooLong;
 
         const name = try fmt.allocPrint(self.allocator, format, values);
