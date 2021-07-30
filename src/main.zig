@@ -41,15 +41,15 @@ pub const Registry = struct {
         self.allocator.destroy(self);
     }
 
-    pub fn getOrCreateCounter(self: *Self, comptime format: []const u8, values: anytype) GetCounterError!*Counter {
+    pub fn getOrCreateCounter(self: *Self, name: []const u8) GetCounterError!*Counter {
+        if (name.len > max_name_length) return error.NameTooLong;
+
         const held = self.mutex.acquire();
         defer held.release();
 
-        if (format.len > max_name_length) return error.NameTooLong;
+        const duped_name = try self.allocator.dupe(u8, name);
 
-        const name = try fmt.allocPrint(self.allocator, format, values);
-
-        var gop = try self.counters.getOrPut(self.allocator, name);
+        var gop = try self.counters.getOrPut(self.allocator, duped_name);
         if (!gop.found_existing) {
             gop.value_ptr.* = .{};
         }
@@ -98,15 +98,15 @@ test "registry getOrCreateCounter" {
     var registry = try Registry.create(&arena.allocator);
     defer registry.destroy();
 
-    const key = "http_requests{{status=\"{d}\"}}";
+    const name = try fmt.allocPrint(&arena.allocator, "http_requests{{status=\"{d}\"}}", .{500});
 
     var i: usize = 0;
     while (i < 10) : (i += 1) {
-        var counter = try registry.getOrCreateCounter(key, .{500});
+        var counter = try registry.getOrCreateCounter(name);
         counter.inc();
     }
 
-    var counter = try registry.getOrCreateCounter(key, .{500});
+    var counter = try registry.getOrCreateCounter(name);
     try testing.expectEqual(@as(u64, 10), counter.get());
 }
 
@@ -118,14 +118,16 @@ test "registry writePrometheus" {
 
     var i: usize = 0;
     while (i < 3) : (i += 1) {
-        var counter = try registry.getOrCreateCounter("http_requests{d}", .{i});
+        const name = try fmt.allocPrint(&arena.allocator, "http_requests_{d}", .{i});
+
+        var counter = try registry.getOrCreateCounter(name);
         counter.set(i * 2);
     }
 
     const exp =
-        \\http_requests0 0
-        \\http_requests1 2
-        \\http_requests2 4
+        \\http_requests_0 0
+        \\http_requests_1 2
+        \\http_requests_2 4
         \\
     ;
 
