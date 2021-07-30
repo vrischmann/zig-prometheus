@@ -122,11 +122,6 @@ test "registry writePrometheus" {
         counter.set(i * 2);
     }
 
-    var buffer = std.ArrayList(u8).init(std.testing.allocator);
-    defer buffer.deinit();
-
-    try registry.writePrometheus(std.testing.allocator, buffer.writer());
-
     const exp =
         \\http_requests0 0
         \\http_requests1 2
@@ -134,7 +129,32 @@ test "registry writePrometheus" {
         \\
     ;
 
-    try testing.expectEqualStrings(exp, buffer.items);
+    // Write to a buffer
+    {
+        var buffer = std.ArrayList(u8).init(&arena.allocator);
+        defer buffer.deinit();
+
+        try registry.writePrometheus(&arena.allocator, buffer.writer());
+
+        try testing.expectEqualStrings(exp, buffer.items);
+    }
+
+    // Write to  a file
+    {
+        const filename = "prometheus_metrics.txt";
+        var file = try std.fs.cwd().createFile(filename, .{ .read = true });
+        defer {
+            file.close();
+            std.fs.cwd().deleteFile(filename) catch {};
+        }
+
+        try registry.writePrometheus(&arena.allocator, file.writer());
+
+        try file.seekTo(0);
+        const file_data = try file.readToEndAlloc(&arena.allocator, std.math.maxInt(usize));
+
+        try testing.expectEqualStrings(exp, file_data);
+    }
 }
 
 test "" {
