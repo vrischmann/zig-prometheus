@@ -5,7 +5,7 @@ const heap = std.heap;
 const mem = std.mem;
 const testing = std.testing;
 
-pub const Counter = @import("Counter.zig");
+pub const Counter = @import("metrics.zig").Counter;
 
 pub const GetCounterError = error{
     // Returned when trying to add a metric to an already full registry.
