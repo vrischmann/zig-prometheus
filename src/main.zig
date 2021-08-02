@@ -8,6 +8,7 @@ const testing = std.testing;
 pub const Metric = @import("metric.zig").Metric;
 pub const Counter = @import("Counter.zig");
 pub const Gauge = @import("Gauge.zig").Gauge;
+pub const Histogram = @import("Histogram.zig").Histogram;
 pub const GaugeCallFnType = @import("Gauge.zig").GaugeCallFnType;
 
 pub const GetMetricError = error{
@@ -77,6 +78,24 @@ pub fn Registry(comptime options: RegistryOptions) type {
             }
 
             return @fieldParentPtr(Counter, "metric", gop.value_ptr.*);
+        }
+
+        pub fn getOrCreateHistogram(self: *Self, name: []const u8) GetMetricError!*Histogram {
+            if (self.nbMetrics() >= options.max_metrics) return error.TooManyMetrics;
+            if (name.len > options.max_name_len) return error.NameTooLong;
+
+            const duped_name = try self.allocator.dupe(u8, name);
+
+            const held = self.mutex.acquire();
+            defer held.release();
+
+            var gop = try self.metrics.getOrPut(self.allocator, duped_name);
+            if (!gop.found_existing) {
+                var real_metric = try Histogram.init(self.allocator);
+                gop.value_ptr.* = &real_metric.metric;
+            }
+
+            return @fieldParentPtr(Histogram, "metric", gop.value_ptr.*);
         }
 
         pub fn getOrCreateGauge(
@@ -156,88 +175,109 @@ test "registry getOrCreateCounter" {
 }
 
 test "registry writePrometheus" {
-    var registry = try Registry(.{}).create(testing.allocator);
-    defer registry.destroy();
+    const TestCase = struct {
+        counter_name: []const u8,
+        gauge_name: []const u8,
+        histogram_name: []const u8,
+        exp: []const u8,
+    };
 
-    // Add some counters
-    {
-        var i: usize = 0;
-        while (i < 2) : (i += 1) {
-            const name = try fmt.allocPrint(testing.allocator, "http_requests_{d}", .{i});
-            defer testing.allocator.free(name);
+    const exp1 =
+        \\http_conn_pool_size 4.000000
+        \\http_request_size_bucket{vmrange="1.292e+02...1.468e+02"} 1
+        \\http_request_size_bucket{vmrange="4.642e+02...5.275e+02"} 1
+        \\http_request_size_bucket{vmrange="1.136e+03...1.292e+03"} 1
+        \\http_request_size_sum 1870.360000
+        \\http_request_size_count 3
+        \\http_requests 2
+        \\
+    ;
 
-            var counter = try registry.getOrCreateCounter(name);
-            counter.set(i * 2);
+    const exp2 =
+        \\http_conn_pool_size{route="/api/v2/users"} 4.000000
+        \\http_request_size_bucket{route="/api/v2/users",vmrange="1.292e+02...1.468e+02"} 1
+        \\http_request_size_bucket{route="/api/v2/users",vmrange="4.642e+02...5.275e+02"} 1
+        \\http_request_size_bucket{route="/api/v2/users",vmrange="1.136e+03...1.292e+03"} 1
+        \\http_request_size_sum{route="/api/v2/users"} 1870.360000
+        \\http_request_size_count{route="/api/v2/users"} 3
+        \\http_requests{route="/api/v2/users"} 2
+        \\
+    ;
+
+    const test_cases = &[_]TestCase{
+        .{
+            .counter_name = "http_requests",
+            .gauge_name = "http_conn_pool_size",
+            .histogram_name = "http_request_size",
+            .exp = exp1,
+        },
+        .{
+            .counter_name = "http_requests{route=\"/api/v2/users\"}",
+            .gauge_name = "http_conn_pool_size{route=\"/api/v2/users\"}",
+            .histogram_name = "http_request_size{route=\"/api/v2/users\"}",
+            .exp = exp2,
+        },
+    };
+
+    inline for (test_cases) |tc| {
+        var registry = try Registry(.{}).create(testing.allocator);
+        defer registry.destroy();
+
+        // Add some counters
+        {
+            var counter = try registry.getOrCreateCounter(tc.counter_name);
+            counter.set(2);
         }
-    }
 
-    // Add some gauges
-    {
-        var i: usize = 0;
-        while (i < 2) : (i += 1) {
-            const name = try fmt.allocPrint(testing.allocator, "http_conn_pool_size_{d}", .{i});
-            defer testing.allocator.free(name);
-
-            var gauge = try registry.getOrCreateGauge(
-                name,
-                @as(f64, 0.0),
+        // Add some gauges
+        {
+            _ = try registry.getOrCreateGauge(
+                tc.gauge_name,
+                @as(f64, 4.0),
                 struct {
                     fn get(s: *f64) f64 {
-                        s.* += 2;
                         return s.*;
                     }
                 }.get,
             );
+        }
 
-            var j: usize = 0;
-            while (j < i + 1) : (j += 1) {
-                _ = gauge.get();
+        // Add an histogram
+        {
+            var histogram = try registry.getOrCreateHistogram(tc.histogram_name);
+
+            histogram.update(500.12);
+            histogram.update(1230.240);
+            histogram.update(140);
+        }
+
+        // Write to a buffer
+        {
+            var buffer = std.ArrayList(u8).init(testing.allocator);
+            defer buffer.deinit();
+
+            try registry.writePrometheus(testing.allocator, buffer.writer());
+
+            try testing.expectEqualStrings(tc.exp, buffer.items);
+        }
+
+        // Write to  a file
+        {
+            const filename = "prometheus_metrics.txt";
+            var file = try std.fs.cwd().createFile(filename, .{ .read = true });
+            defer {
+                file.close();
+                std.fs.cwd().deleteFile(filename) catch {};
             }
+
+            try registry.writePrometheus(testing.allocator, file.writer());
+
+            try file.seekTo(0);
+            const file_data = try file.readToEndAlloc(testing.allocator, std.math.maxInt(usize));
+            defer testing.allocator.free(file_data);
+
+            try testing.expectEqualStrings(tc.exp, file_data);
         }
-    }
-
-    // Write to a buffer
-    {
-        var buffer = std.ArrayList(u8).init(testing.allocator);
-        defer buffer.deinit();
-
-        try registry.writePrometheus(testing.allocator, buffer.writer());
-
-        const exp =
-            \\http_conn_pool_size_0 4.000000
-            \\http_conn_pool_size_1 6.000000
-            \\http_requests_0 0
-            \\http_requests_1 2
-            \\
-        ;
-
-        try testing.expectEqualStrings(exp, buffer.items);
-    }
-
-    // Write to  a file
-    {
-        const filename = "prometheus_metrics.txt";
-        var file = try std.fs.cwd().createFile(filename, .{ .read = true });
-        defer {
-            file.close();
-            std.fs.cwd().deleteFile(filename) catch {};
-        }
-
-        try registry.writePrometheus(testing.allocator, file.writer());
-
-        try file.seekTo(0);
-        const file_data = try file.readToEndAlloc(testing.allocator, std.math.maxInt(usize));
-        defer testing.allocator.free(file_data);
-
-        const exp =
-            \\http_conn_pool_size_0 6.000000
-            \\http_conn_pool_size_1 8.000000
-            \\http_requests_0 0
-            \\http_requests_1 2
-            \\
-        ;
-
-        try testing.expectEqualStrings(exp, file_data);
     }
 }
 
