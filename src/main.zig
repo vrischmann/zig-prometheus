@@ -9,7 +9,7 @@ const metrics = @import("metrics.zig");
 pub const Counter = metrics.Counter;
 pub const Metric = metrics.Metric;
 
-pub const GetCounterError = error{
+pub const GetMetricError = error{
     // Returned when trying to add a metric to an already full registry.
     TooManyMetrics,
     // Returned when the name of name is bigger than the configured max_name_len.
@@ -27,35 +27,40 @@ pub fn Registry(comptime options: RegistryOptions) type {
     return struct {
         const Self = @This();
 
-        const CounterMap = hash_map.StringHashMapUnmanaged(*Metric);
+        const MetricMap = hash_map.StringHashMapUnmanaged(*Metric);
 
+        root_allocator: *mem.Allocator,
+
+        arena: heap.ArenaAllocator,
         allocator: *mem.Allocator,
 
         mutex: std.Thread.Mutex,
-        counters: CounterMap,
+        metrics: MetricMap,
 
         pub fn create(allocator: *mem.Allocator) !*Self {
             const self = try allocator.create(Self);
 
             self.* = .{
-                .allocator = allocator,
+                .root_allocator = allocator,
+                .arena = heap.ArenaAllocator.init(allocator),
+                .allocator = &self.arena.allocator,
                 .mutex = .{},
-                .counters = CounterMap{},
+                .metrics = MetricMap{},
             };
 
             return self;
         }
 
         pub fn destroy(self: *Self) void {
-            self.counters.deinit(self.allocator);
-            self.allocator.destroy(self);
+            self.arena.deinit();
+            self.root_allocator.destroy(self);
         }
 
         fn nbMetrics(self: *const Self) usize {
-            return self.counters.count();
+            return self.metrics.count();
         }
 
-        pub fn getOrCreate(self: *Self, comptime MetricType: type, name: []const u8) GetCounterError!*MetricType {
+        pub fn getOrCreate(self: *Self, comptime MetricType: type, name: []const u8) GetMetricError!*MetricType {
             if (MetricType != Counter and MetricType != Gauge) {
                 @compileError("invalid MetricType " ++ @typeName(MetricType));
             }
@@ -68,7 +73,7 @@ pub fn Registry(comptime options: RegistryOptions) type {
 
             const duped_name = try self.allocator.dupe(u8, name);
 
-            var gop = try self.counters.getOrPut(self.allocator, duped_name);
+            var gop = try self.metrics.getOrPut(self.allocator, duped_name);
             if (!gop.found_existing) {
                 var real_metric = try MetricType.init(self.allocator);
                 gop.value_ptr.* = &real_metric.metric;
@@ -81,10 +86,10 @@ pub fn Registry(comptime options: RegistryOptions) type {
             var arena = heap.ArenaAllocator.init(allocator);
             defer arena.deinit();
 
-            try writePrometheusMetrics(&arena.allocator, CounterMap, self.counters, writer);
+            try writePrometheusMetrics(&arena.allocator, self.metrics, writer);
         }
 
-        fn writePrometheusMetrics(allocator: *mem.Allocator, comptime MapType: type, map: MapType, writer: anytype) !void {
+        fn writePrometheusMetrics(allocator: *mem.Allocator, map: MetricMap, writer: anytype) !void {
             // Get the keys, sorted
             const keys = blk: {
                 var key_list = try std.ArrayList([]const u8).initCapacity(allocator, map.count());
