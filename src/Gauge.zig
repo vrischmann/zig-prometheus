@@ -20,20 +20,18 @@ pub fn Gauge(comptime StateType: type) type {
     return struct {
         const Self = @This();
 
-        metric: Metric,
-        callFn: CallFnType,
-        state: StateType,
+        metric: Metric = .{
+            .getResultFn = getResult,
+        },
+        callFn: CallFnType = undefined,
+        state: StateType = undefined,
 
         pub fn init(allocator: *mem.Allocator, comptime callFn: CallFnType, state: StateType) !*Self {
             const self = try allocator.create(Self);
 
-            self.* = .{
-                .metric = Metric{
-                    .getResultFn = getResult,
-                },
-                .callFn = callFn,
-                .state = state,
-            };
+            self.* = .{};
+            self.callFn = callFn;
+            self.state = state;
 
             return self;
         }
