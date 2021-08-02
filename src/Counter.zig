@@ -6,18 +6,15 @@ const Metric = @import("metric.zig").Metric;
 
 const Self = @This();
 
-metric: Metric,
-value: std.atomic.Atomic(u64),
+metric: Metric = Metric{
+    .getResultFn = getResult,
+},
+value: std.atomic.Atomic(u64) = .{ .value = 0 },
 
 pub fn init(allocator: *mem.Allocator) !*Self {
     const self = try allocator.create(Self);
 
-    self.* = .{
-        .metric = Metric{
-            .getResultFn = getResult,
-        },
-        .value = .{ .value = 0 },
-    };
+    self.* = .{};
 
     return self;
 }
