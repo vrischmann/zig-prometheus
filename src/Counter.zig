@@ -102,7 +102,7 @@ test "counter: concurrent" {
     try testing.expectEqual(@as(u64, 80), counter.get());
 }
 
-test "counter: writePrometheus" {
+test "counter: write" {
     var counter = try Self.init(testing.allocator);
     defer testing.allocator.destroy(counter);
     counter.set(340);
