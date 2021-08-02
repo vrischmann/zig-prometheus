@@ -162,3 +162,25 @@ test "gauge: shared state" {
 
     try testing.expectEqual(@as(usize, 16), @floatToInt(usize, gauge.get()));
 }
+
+test "gauge: write" {
+    var gauge = try Gauge(usize).init(
+        testing.allocator,
+        struct {
+            fn get(state: *usize) f64 {
+                state.* += 340;
+                return @intToFloat(f64, state.*);
+            }
+        }.get,
+        @as(usize, 0),
+    );
+    defer testing.allocator.destroy(gauge);
+
+    var buffer = std.ArrayList(u8).init(testing.allocator);
+    defer buffer.deinit();
+
+    var metric = &gauge.metric;
+    try metric.write(testing.allocator, buffer.writer(), "mygauge");
+
+    try testing.expectEqualStrings("mygauge 340.000000\n", buffer.items);
+}
