@@ -27,7 +27,7 @@ pub fn Registry(comptime options: RegistryOptions) type {
     return struct {
         const Self = @This();
 
-        const CounterMap = hash_map.StringHashMapUnmanaged(Counter);
+        const CounterMap = hash_map.StringHashMapUnmanaged(*Metric);
 
         allocator: *mem.Allocator,
 
@@ -55,7 +55,11 @@ pub fn Registry(comptime options: RegistryOptions) type {
             return self.counters.count();
         }
 
-        pub fn getOrCreateCounter(self: *Self, name: []const u8) GetCounterError!*Counter {
+        pub fn getOrCreate(self: *Self, comptime MetricType: type, name: []const u8) GetCounterError!*MetricType {
+            if (MetricType != Counter and MetricType != Gauge) {
+                @compileError("invalid MetricType " ++ @typeName(MetricType));
+            }
+
             if (self.nbMetrics() >= options.max_metrics) return error.TooManyMetrics;
             if (name.len > options.max_name_len) return error.NameTooLong;
 
@@ -66,9 +70,11 @@ pub fn Registry(comptime options: RegistryOptions) type {
 
             var gop = try self.counters.getOrPut(self.allocator, duped_name);
             if (!gop.found_existing) {
-                gop.value_ptr.* = Counter.init();
+                var real_metric = try MetricType.init(self.allocator);
+                gop.value_ptr.* = &real_metric.metric;
             }
-            return gop.value_ptr;
+
+            return @fieldParentPtr(MetricType, "metric", gop.value_ptr.*);
         }
 
         pub fn writePrometheus(self: *Self, allocator: *mem.Allocator, writer: anytype) !void {
@@ -95,9 +101,7 @@ pub fn Registry(comptime options: RegistryOptions) type {
 
             // Write each metric in key order
             for (keys) |key| {
-                var value = map.get(key) orelse unreachable;
-
-                var metric = &value.metric;
+                var metric = map.get(key) orelse unreachable;
                 try metric.write(writer, key);
             }
         }
@@ -119,11 +123,11 @@ test "registry getOrCreateCounter" {
 
     var i: usize = 0;
     while (i < 10) : (i += 1) {
-        var counter = try registry.getOrCreateCounter(name);
+        var counter = try registry.getOrCreate(Counter, name);
         counter.inc();
     }
 
-    var counter = try registry.getOrCreateCounter(name);
+    var counter = try registry.getOrCreate(Counter, name);
     try testing.expectEqual(@as(u64, 10), counter.get());
 }
 
@@ -137,7 +141,7 @@ test "registry writePrometheus" {
     while (i < 3) : (i += 1) {
         const name = try fmt.allocPrint(&arena.allocator, "http_requests_{d}", .{i});
 
-        var counter = try registry.getOrCreateCounter(name);
+        var counter = try registry.getOrCreate(Counter, name);
         counter.set(i * 2);
     }
 
@@ -183,12 +187,12 @@ test "registry options" {
     defer registry.destroy();
 
     {
-        try testing.expectError(error.NameTooLong, registry.getOrCreateCounter("hello"));
-        _ = try registry.getOrCreateCounter("foo");
+        try testing.expectError(error.NameTooLong, registry.getOrCreate(Counter, "hello"));
+        _ = try registry.getOrCreate(Counter, "foo");
     }
 
     {
-        try testing.expectError(error.TooManyMetrics, registry.getOrCreateCounter("bar"));
+        try testing.expectError(error.TooManyMetrics, registry.getOrCreate(Counter, "bar"));
     }
 }
 

@@ -2,7 +2,7 @@ const std = @import("std");
 const mem = std.mem;
 const testing = std.testing;
 
-pub const Metric = union(enum) {
+pub const Metric = struct {
     pub const Error = error{
         OutOfMemory,
     } || std.os.WriteError;
@@ -32,14 +32,19 @@ pub const Counter = struct {
     const Self = @This();
 
     metric: Metric,
-    value: std.atomic.Atomic(u64) = .{ .value = 0 },
+    value: std.atomic.Atomic(u64),
 
-    pub fn init() Self {
-        return Self{
+    pub fn init(allocator: *mem.Allocator) !*Self {
+        const self = try allocator.create(Self);
+
+        self.* = .{
             .metric = Metric{
                 .getResultFn = getResult,
             },
+            .value = .{ .value = 0 },
         };
+
+        return self;
     }
 
     pub fn inc(self: *Self) void {
@@ -80,7 +85,8 @@ test "counter: inc/add/dec/set/get" {
     var buffer = std.ArrayList(u8).init(std.testing.allocator);
     defer buffer.deinit();
 
-    var counter = Counter.init();
+    var counter = try Counter.init(std.testing.allocator);
+    defer std.testing.allocator.destroy(counter);
 
     try testing.expectEqual(@as(u64, 0), counter.get());
 
@@ -98,7 +104,8 @@ test "counter: inc/add/dec/set/get" {
 }
 
 test "counter: concurrent" {
-    var counter = Counter.init();
+    var counter = try Counter.init(std.testing.allocator);
+    defer std.testing.allocator.destroy(counter);
 
     var threads: [4]std.Thread = undefined;
     for (threads) |*thread| {
@@ -112,7 +119,7 @@ test "counter: concurrent" {
                     }
                 }
             }.run,
-            .{&counter},
+            .{counter},
         );
     }
 
@@ -122,7 +129,8 @@ test "counter: concurrent" {
 }
 
 test "counter: writePrometheus" {
-    var counter = Counter.init();
+    var counter = try Counter.init(std.testing.allocator);
+    defer std.testing.allocator.destroy(counter);
     counter.set(340);
 
     var buffer = std.ArrayList(u8).init(std.testing.allocator);
