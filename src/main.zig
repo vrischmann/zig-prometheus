@@ -6,7 +6,10 @@ const mem = std.mem;
 const testing = std.testing;
 
 const metrics = @import("metrics.zig");
+
 pub const Counter = metrics.Counter;
+pub const Gauge = metrics.Gauge;
+pub const GaugeCallFnType = metrics.GaugeCallFnType;
 pub const Metric = metrics.Metric;
 
 pub const GetMetricError = error{
@@ -60,26 +63,45 @@ pub fn Registry(comptime options: RegistryOptions) type {
             return self.metrics.count();
         }
 
-        pub fn getOrCreate(self: *Self, comptime MetricType: type, name: []const u8) GetMetricError!*MetricType {
-            if (MetricType != Counter and MetricType != Gauge) {
-                @compileError("invalid MetricType " ++ @typeName(MetricType));
-            }
-
+        pub fn getOrCreateCounter(self: *Self, name: []const u8) GetMetricError!*Counter {
             if (self.nbMetrics() >= options.max_metrics) return error.TooManyMetrics;
             if (name.len > options.max_name_len) return error.NameTooLong;
+
+            const duped_name = try self.allocator.dupe(u8, name);
 
             const held = self.mutex.acquire();
             defer held.release();
 
-            const duped_name = try self.allocator.dupe(u8, name);
-
             var gop = try self.metrics.getOrPut(self.allocator, duped_name);
             if (!gop.found_existing) {
-                var real_metric = try MetricType.init(self.allocator);
+                var real_metric = try Counter.init(self.allocator);
                 gop.value_ptr.* = &real_metric.metric;
             }
 
-            return @fieldParentPtr(MetricType, "metric", gop.value_ptr.*);
+            return @fieldParentPtr(Counter, "metric", gop.value_ptr.*);
+        }
+
+        pub fn getOrCreateGauge(
+            self: *Self,
+            name: []const u8,
+            state: anytype,
+            comptime callFn: GaugeCallFnType(@TypeOf(state)),
+        ) GetMetricError!*Gauge(@TypeOf(state)) {
+            if (self.nbMetrics() >= options.max_metrics) return error.TooManyMetrics;
+            if (name.len > options.max_name_len) return error.NameTooLong;
+
+            const duped_name = try self.allocator.dupe(u8, name);
+
+            const held = self.mutex.acquire();
+            defer held.release();
+
+            var gop = try self.metrics.getOrPut(self.allocator, duped_name);
+            if (!gop.found_existing) {
+                var real_metric = try Gauge(@TypeOf(state)).init(self.allocator, callFn, state);
+                gop.value_ptr.* = &real_metric.metric;
+            }
+
+            return @fieldParentPtr(Gauge(@TypeOf(state)), "metric", gop.value_ptr.*);
         }
 
         pub fn writePrometheus(self: *Self, allocator: *mem.Allocator, writer: anytype) !void {
@@ -127,11 +149,11 @@ test "registry getOrCreateCounter" {
 
     var i: usize = 0;
     while (i < 10) : (i += 1) {
-        var counter = try registry.getOrCreate(Counter, name);
+        var counter = try registry.getOrCreateCounter(name);
         counter.inc();
     }
 
-    var counter = try registry.getOrCreate(Counter, name);
+    var counter = try registry.getOrCreateCounter(name);
     try testing.expectEqual(@as(u64, 10), counter.get());
 }
 
@@ -139,21 +161,42 @@ test "registry writePrometheus" {
     var registry = try Registry(.{}).create(testing.allocator);
     defer registry.destroy();
 
-    var i: usize = 0;
-    while (i < 3) : (i += 1) {
-        const name = try fmt.allocPrint(testing.allocator, "http_requests_{d}", .{i});
-        defer testing.allocator.free(name);
+    // Add some counters
+    {
+        var i: usize = 0;
+        while (i < 2) : (i += 1) {
+            const name = try fmt.allocPrint(testing.allocator, "http_requests_{d}", .{i});
+            defer testing.allocator.free(name);
 
-        var counter = try registry.getOrCreate(Counter, name);
-        counter.set(i * 2);
+            var counter = try registry.getOrCreateCounter(name);
+            counter.set(i * 2);
+        }
     }
 
-    const exp =
-        \\http_requests_0 0
-        \\http_requests_1 2
-        \\http_requests_2 4
-        \\
-    ;
+    // Add some gauges
+    {
+        var i: usize = 0;
+        while (i < 2) : (i += 1) {
+            const name = try fmt.allocPrint(testing.allocator, "http_conn_pool_size_{d}", .{i});
+            defer testing.allocator.free(name);
+
+            var gauge = try registry.getOrCreateGauge(
+                name,
+                @as(f64, 0.0),
+                struct {
+                    fn get(s: *f64) f64 {
+                        s.* += 2;
+                        return s.*;
+                    }
+                }.get,
+            );
+
+            var j: usize = 0;
+            while (j < i + 1) : (j += 1) {
+                _ = gauge.get();
+            }
+        }
+    }
 
     // Write to a buffer
     {
@@ -161,6 +204,14 @@ test "registry writePrometheus" {
         defer buffer.deinit();
 
         try registry.writePrometheus(testing.allocator, buffer.writer());
+
+        const exp =
+            \\http_conn_pool_size_0 4.000000
+            \\http_conn_pool_size_1 6.000000
+            \\http_requests_0 0
+            \\http_requests_1 2
+            \\
+        ;
 
         try testing.expectEqualStrings(exp, buffer.items);
     }
@@ -180,6 +231,14 @@ test "registry writePrometheus" {
         const file_data = try file.readToEndAlloc(testing.allocator, std.math.maxInt(usize));
         defer testing.allocator.free(file_data);
 
+        const exp =
+            \\http_conn_pool_size_0 6.000000
+            \\http_conn_pool_size_1 8.000000
+            \\http_requests_0 0
+            \\http_requests_1 2
+            \\
+        ;
+
         try testing.expectEqualStrings(exp, file_data);
     }
 }
@@ -189,12 +248,12 @@ test "registry options" {
     defer registry.destroy();
 
     {
-        try testing.expectError(error.NameTooLong, registry.getOrCreate(Counter, "hello"));
-        _ = try registry.getOrCreate(Counter, "foo");
+        try testing.expectError(error.NameTooLong, registry.getOrCreateCounter("hello"));
+        _ = try registry.getOrCreateCounter("foo");
     }
 
     {
-        try testing.expectError(error.TooManyMetrics, registry.getOrCreate(Counter, "bar"));
+        try testing.expectError(error.TooManyMetrics, registry.getOrCreateCounter("bar"));
     }
 }
 
