@@ -8,6 +8,7 @@ const testing = std.testing;
 pub const Metric = @import("metric.zig").Metric;
 pub const Counter = @import("Counter.zig");
 pub const Gauge = @import("Gauge.zig").Gauge;
+pub const Histogram = @import("Histogram.zig").Histogram;
 pub const GaugeCallFnType = @import("Gauge.zig").GaugeCallFnType;
 
 pub const GetMetricError = error{
