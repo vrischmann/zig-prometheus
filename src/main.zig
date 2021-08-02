@@ -121,14 +121,14 @@ pub fn Registry(comptime options: RegistryOptions) type {
             return @fieldParentPtr(Gauge(@TypeOf(state)), "metric", gop.value_ptr.*);
         }
 
-        pub fn writePrometheus(self: *Self, allocator: *mem.Allocator, writer: anytype) !void {
+        pub fn write(self: *Self, allocator: *mem.Allocator, writer: anytype) !void {
             var arena = heap.ArenaAllocator.init(allocator);
             defer arena.deinit();
 
-            try writePrometheusMetrics(&arena.allocator, self.metrics, writer);
+            try writeMetrics(&arena.allocator, self.metrics, writer);
         }
 
-        fn writePrometheusMetrics(allocator: *mem.Allocator, map: MetricMap, writer: anytype) !void {
+        fn writeMetrics(allocator: *mem.Allocator, map: MetricMap, writer: anytype) !void {
             // Get the keys, sorted
             const keys = blk: {
                 var key_list = try std.ArrayList([]const u8).initCapacity(allocator, map.count());
@@ -174,7 +174,7 @@ test "registry getOrCreateCounter" {
     try testing.expectEqual(@as(u64, 10), counter.get());
 }
 
-test "registry writePrometheus" {
+test "registry write" {
     const TestCase = struct {
         counter_name: []const u8,
         gauge_name: []const u8,
@@ -256,7 +256,7 @@ test "registry writePrometheus" {
             var buffer = std.ArrayList(u8).init(testing.allocator);
             defer buffer.deinit();
 
-            try registry.writePrometheus(testing.allocator, buffer.writer());
+            try registry.write(testing.allocator, buffer.writer());
 
             try testing.expectEqualStrings(tc.exp, buffer.items);
         }
@@ -270,7 +270,7 @@ test "registry writePrometheus" {
                 std.fs.cwd().deleteFile(filename) catch {};
             }
 
-            try registry.writePrometheus(testing.allocator, file.writer());
+            try registry.write(testing.allocator, file.writer());
 
             try file.seekTo(0);
             const file_data = try file.readToEndAlloc(testing.allocator, std.math.maxInt(usize));
