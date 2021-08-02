@@ -119,12 +119,11 @@ fn stringLessThan(context: void, lhs: []const u8, rhs: []const u8) bool {
 }
 
 test "registry getOrCreateCounter" {
-    var arena = heap.ArenaAllocator.init(testing.allocator);
-    defer arena.deinit();
-    var registry = try Registry(.{}).create(&arena.allocator);
+    var registry = try Registry(.{}).create(testing.allocator);
     defer registry.destroy();
 
-    const name = try fmt.allocPrint(&arena.allocator, "http_requests{{status=\"{d}\"}}", .{500});
+    const name = try fmt.allocPrint(testing.allocator, "http_requests{{status=\"{d}\"}}", .{500});
+    defer testing.allocator.free(name);
 
     var i: usize = 0;
     while (i < 10) : (i += 1) {
@@ -137,14 +136,13 @@ test "registry getOrCreateCounter" {
 }
 
 test "registry writePrometheus" {
-    var arena = heap.ArenaAllocator.init(testing.allocator);
-    defer arena.deinit();
-    var registry = try Registry(.{}).create(&arena.allocator);
+    var registry = try Registry(.{}).create(testing.allocator);
     defer registry.destroy();
 
     var i: usize = 0;
     while (i < 3) : (i += 1) {
-        const name = try fmt.allocPrint(&arena.allocator, "http_requests_{d}", .{i});
+        const name = try fmt.allocPrint(testing.allocator, "http_requests_{d}", .{i});
+        defer testing.allocator.free(name);
 
         var counter = try registry.getOrCreate(Counter, name);
         counter.set(i * 2);
@@ -159,10 +157,10 @@ test "registry writePrometheus" {
 
     // Write to a buffer
     {
-        var buffer = std.ArrayList(u8).init(&arena.allocator);
+        var buffer = std.ArrayList(u8).init(testing.allocator);
         defer buffer.deinit();
 
-        try registry.writePrometheus(&arena.allocator, buffer.writer());
+        try registry.writePrometheus(testing.allocator, buffer.writer());
 
         try testing.expectEqualStrings(exp, buffer.items);
     }
@@ -176,19 +174,18 @@ test "registry writePrometheus" {
             std.fs.cwd().deleteFile(filename) catch {};
         }
 
-        try registry.writePrometheus(&arena.allocator, file.writer());
+        try registry.writePrometheus(testing.allocator, file.writer());
 
         try file.seekTo(0);
-        const file_data = try file.readToEndAlloc(&arena.allocator, std.math.maxInt(usize));
+        const file_data = try file.readToEndAlloc(testing.allocator, std.math.maxInt(usize));
+        defer testing.allocator.free(file_data);
 
         try testing.expectEqualStrings(exp, file_data);
     }
 }
 
 test "registry options" {
-    var arena = heap.ArenaAllocator.init(testing.allocator);
-    defer arena.deinit();
-    var registry = try Registry(.{ .max_metrics = 1, .max_name_len = 4 }).create(&arena.allocator);
+    var registry = try Registry(.{ .max_metrics = 1, .max_name_len = 4 }).create(testing.allocator);
     defer registry.destroy();
 
     {
