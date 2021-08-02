@@ -127,7 +127,7 @@ pub fn Registry(comptime options: RegistryOptions) type {
             // Write each metric in key order
             for (keys) |key| {
                 var metric = map.get(key) orelse unreachable;
-                try metric.write(writer, key);
+                try metric.write(allocator, writer, key);
             }
         }
     };

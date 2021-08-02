@@ -47,8 +47,11 @@ pub fn set(self: *Self, value: anytype) void {
     _ = self.value.store(@intCast(u64, value), .SeqCst);
 }
 
-fn getResult(metric: *Metric) Metric.Error!Metric.Result {
+fn getResult(metric: *Metric, allocator: *mem.Allocator) Metric.Error!Metric.Result {
+    _ = allocator;
+
     const self = @fieldParentPtr(Self, "metric", metric);
+
     return Metric.Result{ .counter = self.get() };
 }
 
@@ -108,7 +111,7 @@ test "counter: writePrometheus" {
     defer buffer.deinit();
 
     var metric = &counter.metric;
-    try metric.write(buffer.writer(), "mycounter");
+    try metric.write(testing.allocator, buffer.writer(), "mycounter");
 
     try testing.expectEqualStrings("mycounter 340\n", buffer.items);
 }

@@ -55,8 +55,11 @@ pub fn Gauge(comptime StateType: type) type {
             }
         }
 
-        fn getResult(metric: *Metric) Metric.Error!Metric.Result {
+        fn getResult(metric: *Metric, allocator: *mem.Allocator) Metric.Error!Metric.Result {
+            _ = allocator;
+
             const self = @fieldParentPtr(Self, "metric", metric);
+
             return Metric.Result{ .gauge = self.get() };
         }
     };
