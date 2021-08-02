@@ -41,7 +41,7 @@ pub const Counter = struct {
     }
 };
 
-test "inc/add/dec/set/get" {
+test "counter: inc/add/dec/set/get" {
     var counter = Counter{};
 
     try testing.expectEqual(@as(u64, 0), counter.get());
@@ -59,7 +59,31 @@ test "inc/add/dec/set/get" {
     try testing.expectEqual(@as(u64, 43), counter.get());
 }
 
-test "writePrometheus" {
+test "counter: concurrent" {
+    var counter = Counter{};
+
+    var threads: [4]std.Thread = undefined;
+    for (threads) |*thread| {
+        thread.* = try std.Thread.spawn(
+            .{},
+            struct {
+                fn run(c: *Counter) void {
+                    var i: usize = 0;
+                    while (i < 20) : (i += 1) {
+                        c.inc();
+                    }
+                }
+            }.run,
+            .{&counter},
+        );
+    }
+
+    for (threads) |*thread| thread.join();
+
+    try testing.expectEqual(@as(u64, 80), counter.get());
+}
+
+test "counter: writePrometheus" {
     var counter = Counter{};
     counter.set(340);
 
