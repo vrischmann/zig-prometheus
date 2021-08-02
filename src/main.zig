@@ -6,7 +6,7 @@ const mem = std.mem;
 const testing = std.testing;
 
 pub const Metric = @import("metric.zig").Metric;
-pub const Counter = @import("Counter.zig").Counter;
+pub const Counter = @import("Counter.zig");
 pub const Gauge = @import("Gauge.zig").Gauge;
 pub const GaugeCallFnType = @import("Gauge.zig").GaugeCallFnType;
 

@@ -4,64 +4,62 @@ const testing = std.testing;
 
 const Metric = @import("metric.zig").Metric;
 
-pub const Counter = struct {
-    const Self = @This();
+const Self = @This();
 
-    metric: Metric,
-    value: std.atomic.Atomic(u64),
+metric: Metric,
+value: std.atomic.Atomic(u64),
 
-    pub fn init(allocator: *mem.Allocator) !*Self {
-        const self = try allocator.create(Self);
+pub fn init(allocator: *mem.Allocator) !*Self {
+    const self = try allocator.create(Self);
 
-        self.* = .{
-            .metric = Metric{
-                .getResultFn = getResult,
-            },
-            .value = .{ .value = 0 },
-        };
+    self.* = .{
+        .metric = Metric{
+            .getResultFn = getResult,
+        },
+        .value = .{ .value = 0 },
+    };
 
-        return self;
+    return self;
+}
+
+pub fn inc(self: *Self) void {
+    _ = self.value.fetchAdd(1, .SeqCst);
+}
+
+pub fn dec(self: *Self) void {
+    _ = self.value.fetchSub(1, .SeqCst);
+}
+
+pub fn add(self: *Self, value: anytype) void {
+    if (!comptime std.meta.trait.isNumber(@TypeOf(value))) {
+        @compileError("can't add a non-number");
     }
 
-    pub fn inc(self: *Self) void {
-        _ = self.value.fetchAdd(1, .SeqCst);
+    _ = self.value.fetchAdd(@intCast(u64, value), .SeqCst);
+}
+
+pub fn get(self: *const Self) u64 {
+    return self.value.load(.SeqCst);
+}
+
+pub fn set(self: *Self, value: anytype) void {
+    if (!comptime std.meta.trait.isNumber(@TypeOf(value))) {
+        @compileError("can't set a non-number");
     }
 
-    pub fn dec(self: *Self) void {
-        _ = self.value.fetchSub(1, .SeqCst);
-    }
+    _ = self.value.store(@intCast(u64, value), .SeqCst);
+}
 
-    pub fn add(self: *Self, value: anytype) void {
-        if (!comptime std.meta.trait.isNumber(@TypeOf(value))) {
-            @compileError("can't add a non-number");
-        }
-
-        _ = self.value.fetchAdd(@intCast(u64, value), .SeqCst);
-    }
-
-    pub fn get(self: *const Self) u64 {
-        return self.value.load(.SeqCst);
-    }
-
-    pub fn set(self: *Self, value: anytype) void {
-        if (!comptime std.meta.trait.isNumber(@TypeOf(value))) {
-            @compileError("can't set a non-number");
-        }
-
-        _ = self.value.store(@intCast(u64, value), .SeqCst);
-    }
-
-    fn getResult(metric: *Metric) Metric.Error!Metric.Result {
-        const self = @fieldParentPtr(Counter, "metric", metric);
-        return Metric.Result{ .counter = self.get() };
-    }
-};
+fn getResult(metric: *Metric) Metric.Error!Metric.Result {
+    const self = @fieldParentPtr(Self, "metric", metric);
+    return Metric.Result{ .counter = self.get() };
+}
 
 test "counter: inc/add/dec/set/get" {
     var buffer = std.ArrayList(u8).init(testing.allocator);
     defer buffer.deinit();
 
-    var counter = try Counter.init(testing.allocator);
+    var counter = try Self.init(testing.allocator);
     defer testing.allocator.destroy(counter);
 
     try testing.expectEqual(@as(u64, 0), counter.get());
@@ -80,7 +78,7 @@ test "counter: inc/add/dec/set/get" {
 }
 
 test "counter: concurrent" {
-    var counter = try Counter.init(testing.allocator);
+    var counter = try Self.init(testing.allocator);
     defer testing.allocator.destroy(counter);
 
     var threads: [4]std.Thread = undefined;
@@ -88,7 +86,7 @@ test "counter: concurrent" {
         thread.* = try std.Thread.spawn(
             .{},
             struct {
-                fn run(c: *Counter) void {
+                fn run(c: *Self) void {
                     var i: usize = 0;
                     while (i < 20) : (i += 1) {
                         c.inc();
@@ -105,7 +103,7 @@ test "counter: concurrent" {
 }
 
 test "counter: writePrometheus" {
-    var counter = try Counter.init(testing.allocator);
+    var counter = try Self.init(testing.allocator);
     defer testing.allocator.destroy(counter);
     counter.set(340);
 
