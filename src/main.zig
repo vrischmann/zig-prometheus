@@ -5,12 +5,10 @@ const heap = std.heap;
 const mem = std.mem;
 const testing = std.testing;
 
-const metrics = @import("metrics.zig");
-
-pub const Counter = metrics.Counter;
-pub const Gauge = metrics.Gauge;
-pub const GaugeCallFnType = metrics.GaugeCallFnType;
-pub const Metric = metrics.Metric;
+pub const Metric = @import("metric.zig").Metric;
+pub const Counter = @import("Counter.zig").Counter;
+pub const Gauge = @import("Gauge.zig").Gauge;
+pub const GaugeCallFnType = @import("Gauge.zig").GaugeCallFnType;
 
 pub const GetMetricError = error{
     // Returned when trying to add a metric to an already full registry.
