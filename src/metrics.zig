@@ -82,11 +82,11 @@ pub const Counter = struct {
 };
 
 test "counter: inc/add/dec/set/get" {
-    var buffer = std.ArrayList(u8).init(std.testing.allocator);
+    var buffer = std.ArrayList(u8).init(testing.allocator);
     defer buffer.deinit();
 
-    var counter = try Counter.init(std.testing.allocator);
-    defer std.testing.allocator.destroy(counter);
+    var counter = try Counter.init(testing.allocator);
+    defer testing.allocator.destroy(counter);
 
     try testing.expectEqual(@as(u64, 0), counter.get());
 
@@ -104,8 +104,8 @@ test "counter: inc/add/dec/set/get" {
 }
 
 test "counter: concurrent" {
-    var counter = try Counter.init(std.testing.allocator);
-    defer std.testing.allocator.destroy(counter);
+    var counter = try Counter.init(testing.allocator);
+    defer testing.allocator.destroy(counter);
 
     var threads: [4]std.Thread = undefined;
     for (threads) |*thread| {
@@ -129,11 +129,11 @@ test "counter: concurrent" {
 }
 
 test "counter: writePrometheus" {
-    var counter = try Counter.init(std.testing.allocator);
-    defer std.testing.allocator.destroy(counter);
+    var counter = try Counter.init(testing.allocator);
+    defer testing.allocator.destroy(counter);
     counter.set(340);
 
-    var buffer = std.ArrayList(u8).init(std.testing.allocator);
+    var buffer = std.ArrayList(u8).init(testing.allocator);
     defer buffer.deinit();
 
     var metric = &counter.metric;
@@ -142,16 +142,18 @@ test "counter: writePrometheus" {
     try testing.expectEqualStrings("mycounter 340\n", buffer.items);
 }
 
-pub fn Gauge(comptime StateType: type) type {
-    const StateTypeInfo = @typeInfo(StateType);
-
-    const CallFnArgType = switch (StateTypeInfo) {
+pub fn GaugeCallFnType(comptime StateType: type) type {
+    const CallFnArgType = switch (@typeInfo(StateType)) {
         .Pointer => StateType,
         .Optional => |opt| opt.child,
         else => *StateType,
     };
 
-    const CallFnType = fn (comptime state: CallFnArgType) f64;
+    return fn (state: CallFnArgType) f64;
+}
+
+pub fn Gauge(comptime StateType: type) type {
+    const CallFnType = GaugeCallFnType(StateType);
 
     return struct {
         const Self = @This();
@@ -160,14 +162,18 @@ pub fn Gauge(comptime StateType: type) type {
         callFn: CallFnType,
         state: StateType,
 
-        pub fn init(comptime callFn: CallFnType, state: StateType) Self {
-            return Self{
+        pub fn init(allocator: *mem.Allocator, comptime callFn: CallFnType, state: StateType) !*Self {
+            const self = try allocator.create(Self);
+
+            self.* = .{
                 .metric = Metric{
                     .getResultFn = getResult,
                 },
                 .callFn = callFn,
                 .state = state,
             };
+
+            return self;
         }
 
         pub fn get(self: *Self) f64 {
@@ -202,7 +208,8 @@ test "gauge: get" {
     };
     var state = State{ .value = 20.0 };
 
-    var gauge = Gauge(*State).init(
+    var gauge = try Gauge(*State).init(
+        testing.allocator,
         struct {
             fn get(s: *State) f64 {
                 return s.value + 1.0;
@@ -210,6 +217,7 @@ test "gauge: get" {
         }.get,
         &state,
     );
+    defer testing.allocator.destroy(gauge);
 
     try testing.expectEqual(@as(f64, 21.0), gauge.get());
 }
@@ -220,7 +228,8 @@ test "gauge: optional state" {
     };
     var state = State{ .value = 20.0 };
 
-    var gauge = Gauge(?*State).init(
+    var gauge = try Gauge(?*State).init(
+        testing.allocator,
         struct {
             fn get(s: *State) f64 {
                 return s.value + 1.0;
@@ -228,12 +237,14 @@ test "gauge: optional state" {
         }.get,
         &state,
     );
+    defer testing.allocator.destroy(gauge);
 
     try testing.expectEqual(@as(f64, 21.0), gauge.get());
 }
 
 test "gauge: non-pointer state" {
-    var gauge = Gauge(f64).init(
+    var gauge = try Gauge(f64).init(
+        testing.allocator,
         struct {
             fn get(s: *f64) f64 {
                 s.* += 1.0;
@@ -242,18 +253,21 @@ test "gauge: non-pointer state" {
         }.get,
         0.0,
     );
+    defer testing.allocator.destroy(gauge);
+
     try testing.expectEqual(@as(f64, 1.0), gauge.get());
 }
 
 test "gauge: shared state" {
     const State = struct {
         mutex: std.Thread.Mutex = .{},
-        items: std.ArrayList(usize) = std.ArrayList(usize).init(std.testing.allocator),
+        items: std.ArrayList(usize) = std.ArrayList(usize).init(testing.allocator),
     };
     var shared_state = State{};
     defer shared_state.items.deinit();
 
-    var gauge = Gauge(*State).init(
+    var gauge = try Gauge(*State).init(
+        testing.allocator,
         struct {
             fn get(state: *State) f64 {
                 return @intToFloat(f64, state.items.items.len);
@@ -261,6 +275,7 @@ test "gauge: shared state" {
         }.get,
         &shared_state,
     );
+    defer testing.allocator.destroy(gauge);
 
     var threads: [4]std.Thread = undefined;
     for (threads) |*thread, thread_index| {
