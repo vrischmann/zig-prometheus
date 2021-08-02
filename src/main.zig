@@ -5,7 +5,9 @@ const heap = std.heap;
 const mem = std.mem;
 const testing = std.testing;
 
-pub const Counter = @import("metrics.zig").Counter;
+const metrics = @import("metrics.zig");
+pub const Counter = metrics.Counter;
+pub const Metric = metrics.Metric;
 
 pub const GetCounterError = error{
     // Returned when trying to add a metric to an already full registry.
@@ -64,7 +66,7 @@ pub fn Registry(comptime options: RegistryOptions) type {
 
             var gop = try self.counters.getOrPut(self.allocator, duped_name);
             if (!gop.found_existing) {
-                gop.value_ptr.* = .{};
+                gop.value_ptr.* = Counter.init();
             }
             return gop.value_ptr;
         }
@@ -93,9 +95,10 @@ pub fn Registry(comptime options: RegistryOptions) type {
 
             // Write each metric in key order
             for (keys) |key| {
-                const value = map.get(key) orelse unreachable;
+                var value = map.get(key) orelse unreachable;
 
-                try value.writePrometheus(writer, key);
+                var metric = &value.metric;
+                try metric.write(writer, key);
             }
         }
     };
