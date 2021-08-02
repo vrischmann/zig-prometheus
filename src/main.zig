@@ -125,6 +125,9 @@ pub fn Registry(comptime options: RegistryOptions) type {
             var arena = heap.ArenaAllocator.init(allocator);
             defer arena.deinit();
 
+            const held = self.mutex.acquire();
+            defer held.release();
+
             try writeMetrics(&arena.allocator, self.metrics, writer);
         }
 
