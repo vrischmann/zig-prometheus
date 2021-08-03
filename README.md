@@ -19,7 +19,7 @@ This library only provides the following types:
 
 # Examples
 
-If you want a quick overview of how to use this library check the [example program](examples/main.zig). It showcases everything.
+If you want a quick overview of how to use this library check the [example program](example/main.zig). It showcases everything.
 
 # Reference
 
