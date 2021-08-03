@@ -122,8 +122,6 @@ _ = try registry.getOrCreateGauge(
 );
 ```
 
-All methods on a `Gauge` are thread safe.
-
 ## Histogram
 
 TODO
