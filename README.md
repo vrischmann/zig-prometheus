@@ -78,14 +78,66 @@ cosnt counter_value = total_counter.get();
 
 ```
 
-Note that there's no helper to build the metric name with labels, you need to build the proper name yourself.
+All methods on a `Counter` are thread safe.
+
+## Gauge
+
+The `Gauge` type represents a numerical value that is provided by a calling a user-supplied function.
+
+A `Gauge` is created with a _state_ and a _function_ which is given that state every time it is called.
+
+For example, you can imagine a gauge returning the number of connections in a connection pool, the amount of memory allocated, etc.
+Basically anytime the value is instantly queryable and non-monotonic it could be a gauge.
+
+Of course, nothing stops you from using a counter and calling `set` on it; it's up to you.
+
+Here is an example gauge:
+```zig
+var registry = try prometheus.Registry(.{}).create(allocator);
+defer registry.destroy();
+
+const Conn = struct {};
+const ConnPool = struct {
+    conns: std.ArrayList(Conn),
+};
+var pool = ConnPool{ .conns = std.ArrayList.init(allocator) };
+
+_ = try registry.getOrCreateGauge(
+    "http_conn_pool_size",
+    &pool,
+    struct {
+        fn get(p: *Pool) f64 {
+            return @intToFloat(f64, p.conns.items.len);
+        }
+    }.get,
+);
+```
+
+All methods on a `Gauge` are thread safe.
+
+## Histogram
+
+TODO
+
+## Using labels
+
+If you're read the [Prometheus data model](https://prometheus.io/docs/concepts/data_model/#notation), you've seen that a metric can have labels.
+
+Other Prometheus clients provide helpers for this, but not this library: you need to build the proper name yourself.
+
+If you have static labels then it's easy, just write the label directly like this:
+```zig
+var http_requests_route_home = try registry.getOrCreateCounter("http_requests{route=\"/home\"}");
+var http_requests_route_login = try registry.getOrCreateCounter("http_requests{route=\"/login\"}");
+var http_requests_route_logout = try registry.getOrCreateCounter("http_requests{route=\"/logout\"}");
+...
+```
 
 If you have dynamic labels you could write a helper function like this:
 ```zig
-
 fn getHTTPRequestsCounter(allocator: *mem.Allocator, registry: *Registry, route: []const u8) !*prometheus.Counter {
     const name = try std.fmt.allocPrint(allocator, "http_requests{{route=\"{s}\"}}", .{route});
-    return registry.getOrCreateCounter(name);
+    return try registry.getOrCreateCounter(name);
 }
 
 fn handler(route: []const u8) void {
@@ -94,15 +146,3 @@ fn handler(route: []const u8) void {
     ...
 }
 ```
-
-All methods on a `Counter` are thread safe.
-
-## Gauge
-
-The `Gauge` type represents a numerical value that is provided by a calling a user-supplied function.
-
-TODO
-
-## Histogram
-
-TODO
