@@ -60,15 +60,15 @@ The `Counter` type is an atomic integer counter. You can get one like this:
 var registry = try Registry(.{}).create(allocator);
 defer registry.destroy();
 
-var http_requests_total_counter = try registry.getOrCreateCounter("http_requests_total");
-var http_requests_api_users_counter = try registry.getOrCreateCounter("http_requests{route=\"/api/v1/users\"}");
-var http_requests_api_articles_counter = try registry.getOrCreateCounter("http_requests{route=\"/api/v1/articles\"}");
+var total_counter = try registry.getOrCreateCounter("http_requests_total");
+var api_users_counter = try registry.getOrCreateCounter("http_requests{route=\"/api/v1/users\"}");
+var api_articles_counter = try registry.getOrCreateCounter("http_requests{route=\"/api/v1/articles\"}");
 
-http_requests_total_counter.inc();
-http_requests_total_counter.dec();
-http_requests_total_counter.add(200);
-http_requests_total_counter.set(2400);
-cosnt counter_value = http_requests_total_counter.get();
+total_counter.inc();
+total_counter.dec();
+total_counter.add(200);
+total_counter.set(2400);
+cosnt counter_value = total_counter.get();
 
 ```
 
