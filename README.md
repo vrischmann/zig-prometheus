@@ -29,7 +29,13 @@ Here is how to get a registry:
 ```zig
 var registry = try Registry(.{}).create(allocator);
 defer registry.destroy();
+...
+```
 
+You can also configure some options for the registry:
+```zig
+var registry = try Registry(.{ .max_metrics = 40, .max_name_len = 300 }).create(allocator);
+defer registry.destroy();
 ...
 ```
 
