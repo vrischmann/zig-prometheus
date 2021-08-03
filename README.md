@@ -63,19 +63,16 @@ defer registry.destroy();
 var total_counter = try registry.getOrCreateCounter("http_requests_total");
 var api_users_counter = try registry.getOrCreateCounter(
     \\http_requests{route="/api/v1/users"}
-    ,
 );
 var api_articles_counter = try registry.getOrCreateCounter(
     \\http_requests{route="/api/v1/articles"}
-    ,
 );
 
 total_counter.inc();
 total_counter.dec();
 total_counter.add(200);
 total_counter.set(2400);
-cosnt counter_value = total_counter.get();
-
+const counter_value = total_counter.get();
 ```
 
 All methods on a `Counter` are thread safe.
@@ -127,9 +124,15 @@ Other Prometheus clients provide helpers for this, but not this library: you nee
 
 If you have static labels then it's easy, just write the label directly like this:
 ```zig
-var http_requests_route_home = try registry.getOrCreateCounter("http_requests{route=\"/home\"}");
-var http_requests_route_login = try registry.getOrCreateCounter("http_requests{route=\"/login\"}");
-var http_requests_route_logout = try registry.getOrCreateCounter("http_requests{route=\"/logout\"}");
+var http_requests_route_home = try registry.getOrCreateCounter(
+    \\http_requests{route="/home"}
+);
+var http_requests_route_login = try registry.getOrCreateCounter(
+    \\http_requests{route="/login"}
+);
+var http_requests_route_logout = try registry.getOrCreateCounter(
+    \\http_requests{route="/logout"}
+);
 ...
 ```
 
