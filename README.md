@@ -17,6 +17,12 @@ This library only provides the following types:
 * A `Gauge` metric type
 * A `Histogram` metric type
 
+# Examples
+
+If you want a quick overview of how to use this library check the [example program](examples/main.zig). It showcases everything.
+
+# Reference
+
 ## Registry
 
 The `Registry` is the entry point to obtain a metric type, as well as the type capable of serializing the metrics to a writer.
