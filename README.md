@@ -44,7 +44,7 @@ defer registry.destroy();
 
 ...
 
-var file = std.fs.cwd().createFile("metrics.txt", .{});
+var file = try std.fs.cwd().createFile("metrics.txt", .{});
 defer file.close();
 
 try registry.write(allocator, file.writer());
@@ -95,7 +95,11 @@ fn handler(route: []const u8) void {
 }
 ```
 
+All methods on a `Counter` are thread safe.
+
 ## Gauge
+
+The `Gauge` type represents a numerical value that is provided by a calling a user-supplied function.
 
 TODO
 
