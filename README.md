@@ -61,8 +61,14 @@ var registry = try Registry(.{}).create(allocator);
 defer registry.destroy();
 
 var total_counter = try registry.getOrCreateCounter("http_requests_total");
-var api_users_counter = try registry.getOrCreateCounter("http_requests{route=\"/api/v1/users\"}");
-var api_articles_counter = try registry.getOrCreateCounter("http_requests{route=\"/api/v1/articles\"}");
+var api_users_counter = try registry.getOrCreateCounter(
+    \\http_requests{route="/api/v1/users"}
+    ,
+);
+var api_articles_counter = try registry.getOrCreateCounter(
+    \\http_requests{route="/api/v1/articles"}
+    ,
+);
 
 total_counter.inc();
 total_counter.dec();
