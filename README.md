@@ -91,7 +91,7 @@ All methods on a `Counter` are thread safe.
 
 ## Gauge
 
-The `Gauge` type represents a numerical value that is provided by a calling a user-supplied function.
+The `Gauge` type represents a numerical value that is provided by calling a user-supplied function.
 
 A `Gauge` is created with a _state_ and a _function_ which is given that state every time it is called.
 
