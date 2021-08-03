@@ -135,14 +135,19 @@ var http_requests_route_logout = try registry.getOrCreateCounter("http_requests{
 
 If you have dynamic labels you could write a helper function like this:
 ```zig
-fn getHTTPRequestsCounter(allocator: *mem.Allocator, registry: *Registry, route: []const u8) !*prometheus.Counter {
-    const name = try std.fmt.allocPrint(allocator, "http_requests{{route=\"{s}\"}}", .{route});
+fn getHTTPRequestsCounter(
+    allocator: *mem.Allocator,
+    registry: *Registry,
+    route: []const u8,
+) !*prometheus.Counter {
+    const name = try std.fmt.allocPrint(allocator, "http_requests{{route=\"{s}\"}}", .{
+        route,
+    });
     return try registry.getOrCreateCounter(name);
 }
 
 fn handler(route: []const u8) void {
-    var counter = getHTTPRequestsCounter(router);
+    var counter = getHTTPRequestsCounter(allocator, registry, route);
     counter.inc();
-    ...
 }
 ```
