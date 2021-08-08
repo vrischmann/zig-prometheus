@@ -126,7 +126,31 @@ _ = try registry.getOrCreateGauge(
 
 ## Histogram
 
-TODO
+The `Histogram` type samples observations and counts them in automatically created buckets.
+
+It can be used to observe things like request duration, request size, etc.
+
+Here is a (contrived) example on how to use an histogram:
+```zig
+var registry = try prometheus.Registry(.{}).create(allocator);
+defer registry.destroy();
+
+var request_duration_histogram = try registry.getOrCreateHistogram("http_request_duration");
+
+// Make 100 observations of some expensive operation.
+var i: usize = 0;
+while (i < 100) : (i += 1) {
+    const start = std.time.milliTimestamp();
+
+    var j: usize = 0;
+    var sum: usize = 0;
+    while (j < 2000000) : (j += 1) {
+        sum *= j;
+    }
+
+    request_duration_histogram.update(@intToFloat(f64, std.time.milliTimestamp() - start));
+}
+```
 
 ## Using labels
 
