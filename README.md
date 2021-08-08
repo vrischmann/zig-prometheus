@@ -100,7 +100,7 @@ A `Gauge` is created with a _state_ and a _function_ which is given that state e
 For example, you can imagine a gauge returning the number of connections in a connection pool, the amount of memory allocated, etc.
 Basically anytime the value is instantly queryable it could be a gauge.
 
-Of course, nothing stops you from using a counter and calling `set` on it; it's up to you.
+Of course, nothing stops you from using a counter to simulate a gauge and calling `set` on it; it's up to you.
 
 Here is an example gauge:
 ```zig
