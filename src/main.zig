@@ -5,7 +5,7 @@ const heap = std.heap;
 const mem = std.mem;
 const testing = std.testing;
 
-pub const Metric = @import("metric.zig").Metric;
+const Metric = @import("metric.zig").Metric;
 pub const Counter = @import("Counter.zig");
 pub const Gauge = @import("Gauge.zig").Gauge;
 pub const Histogram = @import("Histogram.zig").Histogram;
