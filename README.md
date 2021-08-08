@@ -66,7 +66,9 @@ The `write` method is thread safe.
 
 ## Counter
 
-The `Counter` type is an atomic integer counter. You can get one like this:
+The `Counter` type is an atomic integer counter.
+
+Here is an example of how to use a counter:
 
 ```zig
 var registry = try Registry(.{}).create(allocator);
