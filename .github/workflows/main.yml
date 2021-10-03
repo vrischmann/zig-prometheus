@@ -20,7 +20,7 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
@@ -29,6 +29,10 @@ jobs:
       - uses: goto-bus-stop/setup-zig@v1
         with:
           version: master
+      - uses: nektro/actions-setup-zigmod@v1
+
+      - name: fetch dependencies
+        run: zigmod fetch
 
       - name: Build and test
         run: zig build test

@@ -19,7 +19,9 @@ This library only provides the following types:
 
 # Examples
 
-If you want a quick overview of how to use this library check the [example program](example/main.zig). It showcases everything.
+If you want a quick overview of how to use this library check the [basic example program](examples/basic/main.zig). It showcases everything.
+
+There's also a more specific example which integrates with the HTTP server [Apple Pie](examples/apple_pie/main.zig). It showcases how to export metrics that are directly scrapable by Prometheus or VictoriaMetrics.
 
 # Reference
 
@@ -33,14 +35,22 @@ In an application it might be useful to have a default, global registry; in a li
 
 Here is how to get a registry:
 ```zig
-var registry = try Registry(.{}).create(allocator);
+var registry = try prometheus.Registry(.{}).create(allocator);
 defer registry.destroy();
 ...
 ```
 
 You can also configure some options for the registry:
 ```zig
-var registry = try Registry(.{ .max_metrics = 40, .max_name_len = 300 }).create(allocator);
+var registry = try prometheus.Registry(.{ .max_metrics = 40, .max_name_len = 300 }).create(allocator);
+defer registry.destroy();
+...
+```
+
+If you want to store the registry in a variable you probably want to do something like this:
+```zig
+const Registry = prometheus.Registry(.{ .max_metrics = 40, .max_name_len = 300 });
+var registry = Registry.create(allocator);
 defer registry.destroy();
 ...
 ```
@@ -51,7 +61,7 @@ Now you can get metric objects which we will describe later.
 
 Once you have a registry you can serialize its metrics to a writer:
 ```zig
-var registry = try Registry(.{}).create(allocator);
+var registry = try prometheus.Registry(.{}).create(allocator);
 defer registry.destroy();
 
 ...
@@ -71,7 +81,7 @@ The `Counter` type is an atomic integer counter.
 Here is an example of how to use a counter:
 
 ```zig
-var registry = try Registry(.{}).create(allocator);
+var registry = try prometheus.Registry(.{}).create(allocator);
 defer registry.destroy();
 
 var total_counter = try registry.getOrCreateCounter("http_requests_total");
