@@ -47,6 +47,14 @@ defer registry.destroy();
 ...
 ```
 
+If you want to store the registry in a variable you probably want to do something like this:
+```zig
+const Registry = prometheus.Registry(.{ .max_metrics = 40, .max_name_len = 300 });
+var registry = Registry.create(allocator);
+defer registry.destroy();
+...
+```
+
 Now you can get metric objects which we will describe later.
 
 ### Serializing the metrics
