@@ -35,14 +35,14 @@ In an application it might be useful to have a default, global registry; in a li
 
 Here is how to get a registry:
 ```zig
-var registry = try Registry(.{}).create(allocator);
+var registry = try prometheus.Registry(.{}).create(allocator);
 defer registry.destroy();
 ...
 ```
 
 You can also configure some options for the registry:
 ```zig
-var registry = try Registry(.{ .max_metrics = 40, .max_name_len = 300 }).create(allocator);
+var registry = try prometheus.Registry(.{ .max_metrics = 40, .max_name_len = 300 }).create(allocator);
 defer registry.destroy();
 ...
 ```
@@ -61,7 +61,7 @@ Now you can get metric objects which we will describe later.
 
 Once you have a registry you can serialize its metrics to a writer:
 ```zig
-var registry = try Registry(.{}).create(allocator);
+var registry = try prometheus.Registry(.{}).create(allocator);
 defer registry.destroy();
 
 ...
@@ -81,7 +81,7 @@ The `Counter` type is an atomic integer counter.
 Here is an example of how to use a counter:
 
 ```zig
-var registry = try Registry(.{}).create(allocator);
+var registry = try prometheus.Registry(.{}).create(allocator);
 defer registry.destroy();
 
 var total_counter = try registry.getOrCreateCounter("http_requests_total");
