@@ -1,4 +1,5 @@
 const std = @import("std");
+const deps = @import("deps.zig");
 
 pub fn build(b: *std.build.Builder) void {
     // Standard release options allow the person running `zig build` to select
@@ -18,7 +19,7 @@ pub fn build(b: *std.build.Builder) void {
 
     inline for (examples) |name| {
         var exe = b.addExecutable("example-" ++ name, "examples/" ++ name ++ "/main.zig");
-        exe.addPackagePath("prometheus", "src/main.zig");
+        deps.addAllTo(exe);
         exe.setBuildMode(mode);
         exe.install();
 
