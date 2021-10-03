@@ -14,6 +14,7 @@ pub fn build(b: *std.build.Builder) void {
     main_tests.setBuildMode(mode);
 
     const examples = &[_][]const u8{
+        "apple_pie",
         "basic",
     };
 
