@@ -2,12 +2,12 @@ const std = @import("std");
 
 const prometheus = @import("prometheus");
 
-fn getRandomString(allocator: *std.mem.Allocator, prng: *std.rand.DefaultPrng, n: usize) ![]const u8 {
+fn getRandomString(allocator: *std.mem.Allocator, random: std.rand.Random, n: usize) ![]const u8 {
     const alphabet = "abcdefghijklmnopqrstuvwxyz";
 
     var items = try allocator.alloc(u8, n);
     for (items) |*item| {
-        const random_pos = prng.random.intRangeLessThan(usize, 0, alphabet.len);
+        const random_pos = random.intRangeLessThan(usize, 0, alphabet.len);
         item.* = alphabet[random_pos];
     }
 
@@ -18,7 +18,7 @@ pub fn main() anyerror!void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     var allocator = &arena.allocator;
 
-    var prng = std.rand.DefaultPrng.init(@bitCast(u64, std.time.milliTimestamp()));
+    var random = std.rand.DefaultPrng.init(@bitCast(u64, std.time.milliTimestamp())).random();
 
     // Initialize a registry
     var registry = try prometheus.Registry(.{}).create(allocator);
@@ -29,25 +29,25 @@ pub fn main() anyerror!void {
         var i: usize = 0;
         while (i < 5) : (i += 1) {
             const name = try std.fmt.allocPrint(allocator, "http_requests_total{{route=\"/{s}\"}}", .{
-                try getRandomString(allocator, &prng, 20),
+                try getRandomString(allocator, random, 20),
             });
 
             var counter = try registry.getOrCreateCounter(name);
-            counter.add(prng.random.intRangeAtMost(u64, 0, 450000));
+            counter.add(random.intRangeAtMost(u64, 0, 450000));
         }
     }
 
     // Get some gauges sharing the same state.
     {
         const State = struct {
-            prng: *std.rand.DefaultPrng,
+            random: std.rand.Random,
         };
-        var state = State{ .prng = &prng };
+        var state = State{ .random = random };
 
         var i: usize = 0;
         while (i < 5) : (i += 1) {
             const name = try std.fmt.allocPrint(allocator, "http_conn_pool_size{{name=\"{s}\"}}", .{
-                try getRandomString(allocator, &prng, 5),
+                try getRandomString(allocator, random, 5),
             });
 
             _ = try registry.getOrCreateGauge(
@@ -55,8 +55,8 @@ pub fn main() anyerror!void {
                 &state,
                 struct {
                     fn get(s: *State) f64 {
-                        const n = s.prng.random.intRangeAtMost(usize, 0, 2000);
-                        const f = s.prng.random.float(f64);
+                        const n = s.random.intRangeAtMost(usize, 0, 2000);
+                        const f = s.random.float(f64);
                         return f * @intToFloat(f64, n);
                     }
                 }.get,
@@ -67,14 +67,14 @@ pub fn main() anyerror!void {
     // Get a histogram
     {
         const name = try std.fmt.allocPrint(allocator, "http_requests_latency{{route=\"/{s}\"}}", .{
-            try getRandomString(allocator, &prng, 20),
+            try getRandomString(allocator, random, 20),
         });
 
         var histogram = try registry.getOrCreateHistogram(name);
 
         var i: usize = 0;
         while (i < 200) : (i += 1) {
-            const duration = prng.random.intRangeAtMost(usize, 0, 10000);
+            const duration = random.intRangeAtMost(usize, 0, 10000);
             histogram.update(@intToFloat(f64, duration));
         }
     }
