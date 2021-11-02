@@ -12,6 +12,7 @@ pub fn build(b: *std.build.Builder) void {
 
     var main_tests = b.addTest("src/main.zig");
     main_tests.setBuildMode(mode);
+    main_tests.setTarget(target);
 
     const examples = &[_][]const u8{
         "apple_pie",
