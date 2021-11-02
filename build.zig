@@ -2,12 +2,12 @@ const std = @import("std");
 const deps = @import("deps.zig");
 
 pub fn build(b: *std.build.Builder) void {
-    // Standard release options allow the person running `zig build` to select
-    // between Debug, ReleaseSafe, ReleaseFast, and ReleaseSmall.
     const mode = b.standardReleaseOptions();
+    const target = b.standardTargetOptions(.{});
 
     const lib = b.addStaticLibrary("zig-prometheus", "src/main.zig");
     lib.setBuildMode(mode);
+    lib.setTarget(target);
     lib.install();
 
     var main_tests = b.addTest("src/main.zig");
@@ -22,6 +22,7 @@ pub fn build(b: *std.build.Builder) void {
         var exe = b.addExecutable("example-" ++ name, "examples/" ++ name ++ "/main.zig");
         deps.addAllTo(exe);
         exe.setBuildMode(mode);
+        exe.setTarget(target);
         exe.install();
 
         const run_cmd = exe.run();
