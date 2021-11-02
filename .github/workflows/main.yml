@@ -34,5 +34,8 @@ jobs:
       - name: fetch dependencies
         run: zigmod fetch
 
+      - name: Build examples
+        run: zig build
+
       - name: Build and test
         run: zig build test
