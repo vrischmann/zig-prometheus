@@ -97,8 +97,8 @@ pub const Histogram = struct {
         const bucket_idx: f64 = (math.log10(value) - e10_min) * buckets_per_decimal;
 
         // Keep a lock while updating the histogram.
-        const held = self.mutex.acquire();
-        defer held.release();
+        self.mutex.lock();
+        defer self.mutex.unlock();
 
         self.sum += value;
 
@@ -147,8 +147,8 @@ pub const Histogram = struct {
         var count_total: u64 = 0;
 
         // Keep a lock while querying the histogram.
-        const held = self.mutex.acquire();
-        defer held.release();
+        self.mutex.lock();
+        defer self.mutex.unlock();
 
         if (self.lower > 0) {
             try buckets.append(.{

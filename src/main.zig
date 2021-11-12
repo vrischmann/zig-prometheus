@@ -68,8 +68,8 @@ pub fn Registry(comptime options: RegistryOptions) type {
 
             const duped_name = try self.allocator.dupe(u8, name);
 
-            const held = self.mutex.acquire();
-            defer held.release();
+            self.mutex.lock();
+            defer self.mutex.unlock();
 
             var gop = try self.metrics.getOrPut(self.allocator, duped_name);
             if (!gop.found_existing) {
@@ -86,8 +86,8 @@ pub fn Registry(comptime options: RegistryOptions) type {
 
             const duped_name = try self.allocator.dupe(u8, name);
 
-            const held = self.mutex.acquire();
-            defer held.release();
+            self.mutex.lock();
+            defer self.mutex.unlock();
 
             var gop = try self.metrics.getOrPut(self.allocator, duped_name);
             if (!gop.found_existing) {
@@ -109,8 +109,8 @@ pub fn Registry(comptime options: RegistryOptions) type {
 
             const duped_name = try self.allocator.dupe(u8, name);
 
-            const held = self.mutex.acquire();
-            defer held.release();
+            self.mutex.lock();
+            defer self.mutex.unlock();
 
             var gop = try self.metrics.getOrPut(self.allocator, duped_name);
             if (!gop.found_existing) {
@@ -125,8 +125,8 @@ pub fn Registry(comptime options: RegistryOptions) type {
             var arena = heap.ArenaAllocator.init(allocator);
             defer arena.deinit();
 
-            const held = self.mutex.acquire();
-            defer held.release();
+            self.mutex.lock();
+            defer self.mutex.unlock();
 
             try writeMetrics(&arena.allocator, self.metrics, writer);
         }

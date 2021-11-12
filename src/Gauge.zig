@@ -148,8 +148,8 @@ test "gauge: shared state" {
                 fn run(thread_idx: usize, state: *State) !void {
                     var i: usize = 0;
                     while (i < 4) : (i += 1) {
-                        const held = state.mutex.acquire();
-                        defer held.release();
+                        state.mutex.lock();
+                        defer state.mutex.unlock();
                         try state.items.append(thread_idx + i);
                     }
                 }
