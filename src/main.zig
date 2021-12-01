@@ -31,21 +31,19 @@ pub fn Registry(comptime options: RegistryOptions) type {
 
         const MetricMap = hash_map.StringHashMapUnmanaged(*Metric);
 
-        root_allocator: *mem.Allocator,
+        root_allocator: mem.Allocator,
 
-        arena: heap.ArenaAllocator,
-        allocator: *mem.Allocator,
+        arena_state: heap.ArenaAllocator,
 
         mutex: std.Thread.Mutex,
         metrics: MetricMap,
 
-        pub fn create(allocator: *mem.Allocator) !*Self {
+        pub fn create(allocator: mem.Allocator) !*Self {
             const self = try allocator.create(Self);
 
             self.* = .{
                 .root_allocator = allocator,
-                .arena = heap.ArenaAllocator.init(allocator),
-                .allocator = &self.arena.allocator,
+                .arena_state = heap.ArenaAllocator.init(allocator),
                 .mutex = .{},
                 .metrics = MetricMap{},
             };
@@ -54,7 +52,7 @@ pub fn Registry(comptime options: RegistryOptions) type {
         }
 
         pub fn destroy(self: *Self) void {
-            self.arena.deinit();
+            self.arena_state.deinit();
             self.root_allocator.destroy(self);
         }
 
@@ -66,14 +64,16 @@ pub fn Registry(comptime options: RegistryOptions) type {
             if (self.nbMetrics() >= options.max_metrics) return error.TooManyMetrics;
             if (name.len > options.max_name_len) return error.NameTooLong;
 
-            const duped_name = try self.allocator.dupe(u8, name);
+            var allocator = self.arena_state.allocator();
+
+            const duped_name = try allocator.dupe(u8, name);
 
             self.mutex.lock();
             defer self.mutex.unlock();
 
-            var gop = try self.metrics.getOrPut(self.allocator, duped_name);
+            var gop = try self.metrics.getOrPut(allocator, duped_name);
             if (!gop.found_existing) {
-                var real_metric = try Counter.init(self.allocator);
+                var real_metric = try Counter.init(allocator);
                 gop.value_ptr.* = &real_metric.metric;
             }
 
@@ -84,14 +84,16 @@ pub fn Registry(comptime options: RegistryOptions) type {
             if (self.nbMetrics() >= options.max_metrics) return error.TooManyMetrics;
             if (name.len > options.max_name_len) return error.NameTooLong;
 
-            const duped_name = try self.allocator.dupe(u8, name);
+            var allocator = self.arena_state.allocator();
+
+            const duped_name = try allocator.dupe(u8, name);
 
             self.mutex.lock();
             defer self.mutex.unlock();
 
-            var gop = try self.metrics.getOrPut(self.allocator, duped_name);
+            var gop = try self.metrics.getOrPut(allocator, duped_name);
             if (!gop.found_existing) {
-                var real_metric = try Histogram.init(self.allocator);
+                var real_metric = try Histogram.init(allocator);
                 gop.value_ptr.* = &real_metric.metric;
             }
 
@@ -107,31 +109,33 @@ pub fn Registry(comptime options: RegistryOptions) type {
             if (self.nbMetrics() >= options.max_metrics) return error.TooManyMetrics;
             if (name.len > options.max_name_len) return error.NameTooLong;
 
-            const duped_name = try self.allocator.dupe(u8, name);
+            var allocator = self.arena_state.allocator();
+
+            const duped_name = try allocator.dupe(u8, name);
 
             self.mutex.lock();
             defer self.mutex.unlock();
 
-            var gop = try self.metrics.getOrPut(self.allocator, duped_name);
+            var gop = try self.metrics.getOrPut(allocator, duped_name);
             if (!gop.found_existing) {
-                var real_metric = try Gauge(@TypeOf(state)).init(self.allocator, callFn, state);
+                var real_metric = try Gauge(@TypeOf(state)).init(allocator, callFn, state);
                 gop.value_ptr.* = &real_metric.metric;
             }
 
             return @fieldParentPtr(Gauge(@TypeOf(state)), "metric", gop.value_ptr.*);
         }
 
-        pub fn write(self: *Self, allocator: *mem.Allocator, writer: anytype) !void {
-            var arena = heap.ArenaAllocator.init(allocator);
-            defer arena.deinit();
+        pub fn write(self: *Self, allocator: mem.Allocator, writer: anytype) !void {
+            var arena_state = heap.ArenaAllocator.init(allocator);
+            defer arena_state.deinit();
 
             self.mutex.lock();
             defer self.mutex.unlock();
 
-            try writeMetrics(&arena.allocator, self.metrics, writer);
+            try writeMetrics(arena_state.allocator(), self.metrics, writer);
         }
 
-        fn writeMetrics(allocator: *mem.Allocator, map: MetricMap, writer: anytype) !void {
+        fn writeMetrics(allocator: mem.Allocator, map: MetricMap, writer: anytype) !void {
             // Get the keys, sorted
             const keys = blk: {
                 var key_list = try std.ArrayList([]const u8).initCapacity(allocator, map.count());

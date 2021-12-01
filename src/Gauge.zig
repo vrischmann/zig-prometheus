@@ -26,7 +26,7 @@ pub fn Gauge(comptime StateType: type) type {
         callFn: CallFnType = undefined,
         state: StateType = undefined,
 
-        pub fn init(allocator: *mem.Allocator, comptime callFn: CallFnType, state: StateType) !*Self {
+        pub fn init(allocator: mem.Allocator, comptime callFn: CallFnType, state: StateType) !*Self {
             const self = try allocator.create(Self);
 
             self.* = .{};
@@ -55,7 +55,7 @@ pub fn Gauge(comptime StateType: type) type {
             }
         }
 
-        fn getResult(metric: *Metric, allocator: *mem.Allocator) Metric.Error!Metric.Result {
+        fn getResult(metric: *Metric, allocator: mem.Allocator) Metric.Error!Metric.Result {
             _ = allocator;
 
             const self = @fieldParentPtr(Self, "metric", metric);
