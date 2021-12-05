@@ -41,7 +41,7 @@ pub const Metric = struct {
         gauge: f64,
         histogram: HistogramResult,
 
-        pub fn deinit(self: Self, allocator: *mem.Allocator) void {
+        pub fn deinit(self: Self, allocator: mem.Allocator) void {
             switch (self) {
                 .histogram => |v| {
                     allocator.free(v.buckets);
@@ -51,9 +51,9 @@ pub const Metric = struct {
         }
     };
 
-    getResultFn: fn (self: *Metric, allocator: *mem.Allocator) Error!Result,
+    getResultFn: fn (self: *Metric, allocator: mem.Allocator) Error!Result,
 
-    pub fn write(self: *Metric, allocator: *mem.Allocator, writer: anytype, name: []const u8) Error!void {
+    pub fn write(self: *Metric, allocator: mem.Allocator, writer: anytype, name: []const u8) Error!void {
         const result = try self.getResultFn(self, allocator);
         defer result.deinit(allocator);
 

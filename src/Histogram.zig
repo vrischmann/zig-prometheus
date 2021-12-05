@@ -78,7 +78,7 @@ pub const Histogram = struct {
 
     sum: f64 = 0.0,
 
-    pub fn init(allocator: *mem.Allocator) !*Self {
+    pub fn init(allocator: mem.Allocator) !*Self {
         const self = try allocator.create(Self);
 
         self.* = .{};
@@ -139,7 +139,7 @@ pub const Histogram = struct {
         return true;
     }
 
-    fn getResult(metric: *Metric, allocator: *mem.Allocator) Metric.Error!Metric.Result {
+    fn getResult(metric: *Metric, allocator: mem.Allocator) Metric.Error!Metric.Result {
         const self = @fieldParentPtr(Histogram, "metric", metric);
 
         // Arbitrary maximum capacity

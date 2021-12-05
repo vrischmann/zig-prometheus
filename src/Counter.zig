@@ -11,7 +11,7 @@ metric: Metric = Metric{
 },
 value: std.atomic.Atomic(u64) = .{ .value = 0 },
 
-pub fn init(allocator: *mem.Allocator) !*Self {
+pub fn init(allocator: mem.Allocator) !*Self {
     const self = try allocator.create(Self);
 
     self.* = .{};
@@ -47,7 +47,7 @@ pub fn set(self: *Self, value: anytype) void {
     _ = self.value.store(@intCast(u64, value), .SeqCst);
 }
 
-fn getResult(metric: *Metric, allocator: *mem.Allocator) Metric.Error!Metric.Result {
+fn getResult(metric: *Metric, allocator: mem.Allocator) Metric.Error!Metric.Result {
     _ = allocator;
 
     const self = @fieldParentPtr(Self, "metric", metric);
