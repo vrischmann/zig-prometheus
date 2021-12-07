@@ -6,7 +6,7 @@ const prometheus = @import("prometheus");
 const Registry = prometheus.Registry(.{});
 
 const Context = struct {
-    allocator: *std.mem.Allocator,
+    allocator: std.mem.Allocator,
     registry: *Registry,
 
     messages_total_counter: *prometheus.Counter,
@@ -14,7 +14,7 @@ const Context = struct {
 
 pub fn main() anyerror!void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-    var allocator = &arena.allocator;
+    var allocator = arena.allocator();
 
     // Initialize a registry
     var registry = try Registry.create(allocator);

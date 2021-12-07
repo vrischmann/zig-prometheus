@@ -2,7 +2,7 @@ const std = @import("std");
 
 const prometheus = @import("prometheus");
 
-fn getRandomString(allocator: *std.mem.Allocator, random: std.rand.Random, n: usize) ![]const u8 {
+fn getRandomString(allocator: std.mem.Allocator, random: std.rand.Random, n: usize) ![]const u8 {
     const alphabet = "abcdefghijklmnopqrstuvwxyz";
 
     var items = try allocator.alloc(u8, n);
@@ -16,7 +16,7 @@ fn getRandomString(allocator: *std.mem.Allocator, random: std.rand.Random, n: us
 
 pub fn main() anyerror!void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-    var allocator = &arena.allocator;
+    var allocator = arena.allocator();
 
     var random = std.rand.DefaultPrng.init(@bitCast(u64, std.time.milliTimestamp())).random();
 
