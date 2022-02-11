@@ -1,4 +1,5 @@
 const std = @import("std");
+const debug = std.debug;
 
 const http = @import("apple_pie");
 const prometheus = @import("prometheus");
@@ -10,6 +11,11 @@ const Context = struct {
     registry: *Registry,
 
     messages_total_counter: *prometheus.Counter,
+};
+
+const MessagesRouteArgs = struct {
+    post: usize,
+    message: []const u8,
 };
 
 pub fn main() anyerror!void {
@@ -25,29 +31,36 @@ pub fn main() anyerror!void {
         .registry = registry,
         .messages_total_counter = try registry.getOrCreateCounter("messages_total_counter"),
     };
+    const builder = http.router.Builder(*Context);
+
+    std.debug.print("listening on localhost:8080\n", .{});
 
     try http.listenAndServe(
         allocator,
         try std.net.Address.parseIp("127.0.0.1", 8080),
         &context,
         comptime http.router.Router(*Context, &.{
-            http.router.get("/", metrics),
-            http.router.get("/hello/:name", hello),
-            http.router.get("/posts/:post/messages/:message", messages),
+            builder.get("/", null, metrics),
+            builder.get("/hello/:name", []const u8, hello),
+            builder.get("/posts/:post/messages/:message", MessagesRouteArgs, messages),
         }),
     );
 }
 
-fn metrics(ctx: *Context, response: *http.Response, request: http.Request) !void {
-    _ = request;
+fn metrics(ctx: *Context, response: *http.Response, _: http.Request, captures: ?*const anyopaque) !void {
+    debug.assert(captures == null);
 
     try ctx.registry.write(ctx.allocator, response.writer());
 }
 
-fn hello(ctx: *Context, resp: *http.Response, req: http.Request, name: []const u8) !void {
-    _ = req;
-    _ = resp;
-    _ = name;
+fn hello(ctx: *Context, _: *http.Response, _: http.Request, captures: ?*const anyopaque) !void {
+    debug.assert(captures != null);
+
+    const name_ptr = @ptrCast(
+        *const []const u8,
+        @alignCast(@alignOf(*const []const u8), captures),
+    );
+    const name = name_ptr.*;
 
     var counter_name = try std.fmt.allocPrint(ctx.allocator, "hello_total{{name=\"{s}\"}}", .{name});
     defer ctx.allocator.free(counter_name);
@@ -56,13 +69,16 @@ fn hello(ctx: *Context, resp: *http.Response, req: http.Request, name: []const u
     counter.inc();
 }
 
-fn messages(ctx: *Context, resp: *http.Response, req: http.Request, args: struct {
-    post: usize,
-    message: []const u8,
-}) !void {
-    _ = req;
-    _ = resp;
-    _ = args;
+fn messages(ctx: *Context, _: *http.Response, _: http.Request, captures: ?*const anyopaque) !void {
+    debug.assert(captures != null);
+
+    const args_ptr = @ptrCast(
+        *const MessagesRouteArgs,
+        @alignCast(@alignOf(*const MessagesRouteArgs), captures),
+    );
+    const args = args_ptr.*;
+
+    std.debug.print("args: {s}\n", .{args});
 
     ctx.messages_total_counter.inc();
 }
