@@ -302,6 +302,6 @@ test "registry options" {
     }
 }
 
-test "" {
+test {
     testing.refAllDecls(@This());
 }
