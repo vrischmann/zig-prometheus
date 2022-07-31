@@ -14,7 +14,7 @@ const Context = struct {
 };
 
 const MessagesRouteArgs = struct {
-    post: usize,
+    post: []const u8,
     message: []const u8,
 };
 
@@ -40,28 +40,18 @@ pub fn main() anyerror!void {
         try std.net.Address.parseIp("127.0.0.1", 8080),
         &context,
         comptime http.router.Router(*Context, &.{
-            builder.get("/", null, metrics),
-            builder.get("/hello/:name", []const u8, hello),
-            builder.get("/posts/:post/messages/:message", MessagesRouteArgs, messages),
+            builder.get("/", metrics),
+            builder.get("/hello/:name", hello),
+            builder.get("/posts/:post/messages/:message", messages),
         }),
     );
 }
 
-fn metrics(ctx: *Context, response: *http.Response, _: http.Request, captures: ?*const anyopaque) !void {
-    debug.assert(captures == null);
-
+fn metrics(ctx: *Context, response: *http.Response, _: http.Request) !void {
     try ctx.registry.write(ctx.allocator, response.writer());
 }
 
-fn hello(ctx: *Context, _: *http.Response, _: http.Request, captures: ?*const anyopaque) !void {
-    debug.assert(captures != null);
-
-    const name_ptr = @ptrCast(
-        *const []const u8,
-        @alignCast(@alignOf(*const []const u8), captures),
-    );
-    const name = name_ptr.*;
-
+fn hello(ctx: *Context, _: *http.Response, _: http.Request, name: []const u8) !void {
     var counter_name = try std.fmt.allocPrint(ctx.allocator, "hello_total{{name=\"{s}\"}}", .{name});
     defer ctx.allocator.free(counter_name);
 
@@ -69,16 +59,8 @@ fn hello(ctx: *Context, _: *http.Response, _: http.Request, captures: ?*const an
     counter.inc();
 }
 
-fn messages(ctx: *Context, _: *http.Response, _: http.Request, captures: ?*const anyopaque) !void {
-    debug.assert(captures != null);
-
-    const args_ptr = @ptrCast(
-        *const MessagesRouteArgs,
-        @alignCast(@alignOf(*const MessagesRouteArgs), captures),
-    );
-    const args = args_ptr.*;
-
-    std.debug.print("args: {s}\n", .{args});
+fn messages(ctx: *Context, _: *http.Response, _: http.Request, captures: MessagesRouteArgs) !void {
+    std.debug.print("args: {}\n", .{captures});
 
     ctx.messages_total_counter.inc();
 }
