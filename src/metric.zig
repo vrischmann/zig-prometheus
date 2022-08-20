@@ -51,7 +51,7 @@ pub const Metric = struct {
         }
     };
 
-    getResultFn: fn (self: *Metric, allocator: mem.Allocator) Error!Result,
+    getResultFn: *const fn (self: *Metric, allocator: mem.Allocator) Error!Result,
 
     pub fn write(self: *Metric, allocator: mem.Allocator, writer: anytype, name: []const u8) Error!void {
         const result = try self.getResultFn(self, allocator);
