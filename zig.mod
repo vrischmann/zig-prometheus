@@ -3,7 +3,5 @@ name: prometheus
 main: src/main.zig
 license: MIT
 description: Prometheus client library
-dependencies:
-
-dev_dependencies:
+root_dependencies:
   - src: git https://github.com/Luukdegram/apple_pie branch-master
