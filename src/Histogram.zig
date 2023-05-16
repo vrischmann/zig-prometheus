@@ -158,10 +158,10 @@ pub const Histogram = struct {
             count_total += self.lower;
         }
 
-        for (self.decimal_buckets) |bucket, decimal_bucket_idx| {
+        for (self.decimal_buckets, 0..) |bucket, decimal_bucket_idx| {
             if (isBucketAllZero(&bucket)) continue;
 
-            for (bucket) |count, offset| {
+            for (bucket, 0..) |count, offset| {
                 if (count <= 0) continue;
 
                 const bucket_idx = (decimal_bucket_idx * buckets_per_decimal) + offset;
