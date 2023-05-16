@@ -104,7 +104,7 @@ pub fn Registry(comptime options: RegistryOptions) type {
             self: *Self,
             name: []const u8,
             state: anytype,
-            comptime callFn: GaugeCallFnType(@TypeOf(state)),
+            callFn: GaugeCallFnType(@TypeOf(state)),
         ) GetMetricError!*Gauge(@TypeOf(state)) {
             if (self.nbMetrics() >= options.max_metrics) return error.TooManyMetrics;
             if (name.len > options.max_name_len) return error.NameTooLong;
@@ -145,8 +145,9 @@ pub fn Registry(comptime options: RegistryOptions) type {
                     key_list.appendAssumeCapacity(key.*);
                 }
 
-                break :blk key_list.toOwnedSlice();
+                break :blk key_list.items;
             };
+            defer allocator.free(keys);
 
             std.sort.sort([]const u8, keys, {}, stringLessThan);
 

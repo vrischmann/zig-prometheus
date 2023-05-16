@@ -30,9 +30,7 @@ pub const HistogramResult = struct {
 };
 
 pub const Metric = struct {
-    pub const Error = error{
-        OutOfMemory,
-    } || std.os.WriteError;
+    pub const Error = error{OutOfMemory} || std.os.WriteError || std.http.Server.Response.Writer.Error;
 
     pub const Result = union(enum) {
         const Self = @This();

@@ -8,10 +8,11 @@ pub fn GaugeCallFnType(comptime StateType: type) type {
     const CallFnArgType = switch (@typeInfo(StateType)) {
         .Pointer => StateType,
         .Optional => |opt| opt.child,
+        .Void => void,
         else => *StateType,
     };
 
-    return fn (state: CallFnArgType) f64;
+    return *const fn (state: CallFnArgType) f64;
 }
 
 pub fn Gauge(comptime StateType: type) type {
@@ -26,7 +27,7 @@ pub fn Gauge(comptime StateType: type) type {
         callFn: CallFnType = undefined,
         state: StateType = undefined,
 
-        pub fn init(allocator: mem.Allocator, comptime callFn: CallFnType, state: StateType) !*Self {
+        pub fn init(allocator: mem.Allocator, callFn: CallFnType, state: StateType) !*Self {
             const self = try allocator.create(Self);
 
             self.* = .{};
@@ -50,7 +51,7 @@ pub fn Gauge(comptime StateType: type) type {
                     }
                 },
                 else => {
-                    return self.callFn(&self.state);
+                    return self.callFn(self.state);
                 },
             }
         }
@@ -141,7 +142,7 @@ test "gauge: shared state" {
     defer testing.allocator.destroy(gauge);
 
     var threads: [4]std.Thread = undefined;
-    for (threads) |*thread, thread_index| {
+    for (threads, 0..) |*thread, thread_index| {
         thread.* = try std.Thread.spawn(
             .{},
             struct {
