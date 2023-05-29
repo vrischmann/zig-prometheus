@@ -4,7 +4,7 @@ const testing = std.testing;
 
 const Metric = @import("metric.zig").Metric;
 
-pub fn GaugeCallFnType(comptime StateType: type) type {
+pub fn GaugeCallFnType(comptime StateType: type, comptime Return: type) type {
     const CallFnArgType = switch (@typeInfo(StateType)) {
         .Pointer => StateType,
         .Optional => |opt| opt.child,
@@ -12,11 +12,11 @@ pub fn GaugeCallFnType(comptime StateType: type) type {
         else => *StateType,
     };
 
-    return *const fn (state: CallFnArgType) f64;
+    return *const fn (state: CallFnArgType) Return;
 }
 
-pub fn Gauge(comptime StateType: type) type {
-    const CallFnType = GaugeCallFnType(StateType);
+pub fn Gauge(comptime StateType: type, comptime Return: type) type {
+    const CallFnType = GaugeCallFnType(StateType, Return);
 
     return struct {
         const Self = @This();
@@ -37,7 +37,7 @@ pub fn Gauge(comptime StateType: type) type {
             return self;
         }
 
-        pub fn get(self: *Self) f64 {
+        pub fn get(self: *Self) Return {
             const TypeInfo = @typeInfo(StateType);
             switch (TypeInfo) {
                 .Pointer => {
@@ -46,9 +46,8 @@ pub fn Gauge(comptime StateType: type) type {
                 .Optional => {
                     if (self.state) |state| {
                         return self.callFn(state);
-                    } else {
-                        return 0.0;
                     }
+                    return 0;
                 },
                 else => {
                     return self.callFn(self.state);
@@ -61,7 +60,11 @@ pub fn Gauge(comptime StateType: type) type {
 
             const self = @fieldParentPtr(Self, "metric", metric);
 
-            return Metric.Result{ .gauge = self.get() };
+            return switch (Return) {
+                f64 => Metric.Result{ .gauge = self.get() },
+                u64 => Metric.Result{ .gauge_int = self.get() },
+                else => unreachable, // Gauge Return may only be 'f64' or 'u64'
+            };
         }
     };
 }
