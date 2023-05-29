@@ -104,8 +104,8 @@ pub fn Registry(comptime options: RegistryOptions) type {
             self: *Self,
             name: []const u8,
             state: anytype,
-            callFn: GaugeCallFnType(@TypeOf(state)),
-        ) GetMetricError!*Gauge(@TypeOf(state)) {
+            callFn: GaugeCallFnType(@TypeOf(state), f64),
+        ) GetMetricError!*Gauge(@TypeOf(state), f64) {
             if (self.nbMetrics() >= options.max_metrics) return error.TooManyMetrics;
             if (name.len > options.max_name_len) return error.NameTooLong;
 
@@ -118,11 +118,36 @@ pub fn Registry(comptime options: RegistryOptions) type {
 
             var gop = try self.metrics.getOrPut(allocator, duped_name);
             if (!gop.found_existing) {
-                var real_metric = try Gauge(@TypeOf(state)).init(allocator, callFn, state);
+                var real_metric = try Gauge(@TypeOf(state), f64).init(allocator, callFn, state);
                 gop.value_ptr.* = &real_metric.metric;
             }
 
-            return @fieldParentPtr(Gauge(@TypeOf(state)), "metric", gop.value_ptr.*);
+            return @fieldParentPtr(Gauge(@TypeOf(state), f64), "metric", gop.value_ptr.*);
+        }
+
+        pub fn getOrCreateGaugeInt(
+            self: *Self,
+            name: []const u8,
+            state: anytype,
+            callFn: GaugeCallFnType(@TypeOf(state), u64),
+        ) GetMetricError!*Gauge(@TypeOf(state), u64) {
+            if (self.nbMetrics() >= options.max_metrics) return error.TooManyMetrics;
+            if (name.len > options.max_name_len) return error.NameTooLong;
+
+            var allocator = self.arena_state.allocator();
+
+            const duped_name = try allocator.dupe(u8, name);
+
+            self.mutex.lock();
+            defer self.mutex.unlock();
+
+            var gop = try self.metrics.getOrPut(allocator, duped_name);
+            if (!gop.found_existing) {
+                var real_metric = try Gauge(@TypeOf(state), u64).init(allocator, callFn, state);
+                gop.value_ptr.* = &real_metric.metric;
+            }
+
+            return @fieldParentPtr(Gauge(@TypeOf(state), u64), "metric", gop.value_ptr.*);
         }
 
         pub fn write(self: *Self, allocator: mem.Allocator, writer: anytype) !void {

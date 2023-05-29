@@ -37,6 +37,7 @@ pub const Metric = struct {
 
         counter: u64,
         gauge: f64,
+        gauge_int: u64,
         histogram: HistogramResult,
 
         pub fn deinit(self: Self, allocator: mem.Allocator) void {
@@ -56,7 +57,7 @@ pub const Metric = struct {
         defer result.deinit(allocator);
 
         switch (result) {
-            .counter => |v| {
+            .counter, .gauge_int => |v| {
                 return try writer.print("{s} {d}\n", .{ name, v });
             },
             .gauge => |v| {
