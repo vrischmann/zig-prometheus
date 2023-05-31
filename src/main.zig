@@ -174,7 +174,7 @@ pub fn Registry(comptime options: RegistryOptions) type {
             };
             defer allocator.free(keys);
 
-            std.sort.sort([]const u8, keys, {}, stringLessThan);
+            std.mem.sort([]const u8, keys, {}, stringLessThan);
 
             // Write each metric in key order
             for (keys) |key| {
