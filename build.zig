@@ -19,8 +19,9 @@ pub fn build(b: *std.build.Builder) void {
         .optimize = optimize,
     });
 
+    // NOTE(vincent): apple_pie is not up to date
     const examples = &[_][]const u8{
-        "apple_pie",
+        // "apple_pie",
         "basic",
     };
 
