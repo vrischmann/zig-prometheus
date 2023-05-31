@@ -82,7 +82,7 @@ test "counter: concurrent" {
     defer testing.allocator.destroy(counter);
 
     var threads: [4]std.Thread = undefined;
-    for (threads) |*thread| {
+    for (&threads) |*thread| {
         thread.* = try std.Thread.spawn(
             .{},
             struct {
@@ -97,7 +97,7 @@ test "counter: concurrent" {
         );
     }
 
-    for (threads) |*thread| thread.join();
+    for (&threads) |*thread| thread.join();
 
     try testing.expectEqual(@as(u64, 80), counter.get());
 }

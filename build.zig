@@ -2,17 +2,22 @@ const std = @import("std");
 const deps = @import("deps.zig");
 
 pub fn build(b: *std.build.Builder) void {
-    const mode = b.standardReleaseOptions();
     const target = b.standardTargetOptions(.{});
+    const optimize = b.standardOptimizeOption(.{});
 
-    const lib = b.addStaticLibrary("zig-prometheus", "src/main.zig");
-    lib.setBuildMode(mode);
-    lib.setTarget(target);
-    lib.install();
-
-    var main_tests = b.addTest("src/main.zig");
-    main_tests.setBuildMode(mode);
-    main_tests.setTarget(target);
+    const lib = b.addStaticLibrary(.{
+        .name = "zig-prometheus",
+        .root_source_file = .{ .path = "src/main.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+    b.installArtifact(lib);
+    const main_tests = b.addTest(.{
+        .name = "main",
+        .root_source_file = .{ .path = "src/main.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
 
     const examples = &[_][]const u8{
         "apple_pie",
@@ -20,13 +25,16 @@ pub fn build(b: *std.build.Builder) void {
     };
 
     inline for (examples) |name| {
-        var exe = b.addExecutable("example-" ++ name, "examples/" ++ name ++ "/main.zig");
+        var exe = b.addExecutable(.{
+            .name = "example-" ++ name,
+            .root_source_file = .{ .path = "examples/" ++ name ++ "/main.zig" },
+            .target = target,
+            .optimize = optimize,
+        });
         deps.addAllTo(exe);
-        exe.setBuildMode(mode);
-        exe.setTarget(target);
-        exe.install();
+        b.installArtifact(exe);
 
-        const run_cmd = exe.run();
+        const run_cmd = b.addRunArtifact(exe);
         run_cmd.step.dependOn(b.getInstallStep());
 
         const run_step = b.step("run-example-" ++ name, "Run the example " ++ name);

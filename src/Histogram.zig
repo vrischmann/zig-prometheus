@@ -33,7 +33,7 @@ const bucket_ranges: [buckets_count][]const u8 = blk: {
     };
 
     var result: [buckets_count][]const u8 = undefined;
-    for (result) |*range| {
+    for (&result) |*range| {
         v *= bucket_multiplier;
 
         const end = blk3: {
@@ -82,8 +82,8 @@ pub const Histogram = struct {
         const self = try allocator.create(Self);
 
         self.* = .{};
-        for (self.decimal_buckets) |*bucket| {
-            mem.set(u64, &bucket.*, 0);
+        for (&self.decimal_buckets) |*bucket| {
+            @memset(bucket, 0);
         }
 
         return self;
@@ -158,7 +158,7 @@ pub const Histogram = struct {
             count_total += self.lower;
         }
 
-        for (self.decimal_buckets, 0..) |bucket, decimal_bucket_idx| {
+        for (&self.decimal_buckets, 0..) |bucket, decimal_bucket_idx| {
             if (isBucketAllZero(&bucket)) continue;
 
             for (bucket, 0..) |count, offset| {
@@ -185,7 +185,7 @@ pub const Histogram = struct {
 
         return Metric.Result{
             .histogram = .{
-                .buckets = buckets.toOwnedSlice(),
+                .buckets = try buckets.toOwnedSlice(),
                 .sum = .{ .value = self.sum },
                 .count = count_total,
             },
