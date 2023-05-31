@@ -38,4 +38,4 @@ jobs:
         run: zig build
 
       - name: Build and test
-        run: zig build test
+        run: zig build test -fsummary
