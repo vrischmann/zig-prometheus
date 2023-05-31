@@ -50,7 +50,7 @@ pub fn Gauge(comptime StateType: type, comptime Return: type) type {
                     return 0;
                 },
                 else => {
-                    return self.callFn(self.state);
+                    return self.callFn(&self.state);
                 },
             }
         }
@@ -70,23 +70,39 @@ pub fn Gauge(comptime StateType: type, comptime Return: type) type {
 }
 
 test "gauge: get" {
-    const State = struct {
-        value: f64,
+    const TestCase = struct {
+        state_type: type,
+        typ: type,
     };
-    var state = State{ .value = 20.0 };
 
-    var gauge = try Gauge(*State).init(
-        testing.allocator,
-        struct {
-            fn get(s: *State) f64 {
-                return s.value + 1.0;
-            }
-        }.get,
-        &state,
-    );
-    defer testing.allocator.destroy(gauge);
+    const testCases = [_]TestCase{
+        .{
+            .state_type = struct {
+                value: f64,
+            },
+            .typ = f64,
+        },
+    };
 
-    try testing.expectEqual(@as(f64, 21.0), gauge.get());
+    inline for (testCases) |tc| {
+        const State = tc.state_type;
+        const InnerType = tc.typ;
+
+        var state = State{ .value = 20 };
+
+        var gauge = try Gauge(*State, InnerType).init(
+            testing.allocator,
+            struct {
+                fn get(s: *State) InnerType {
+                    return s.value + 1;
+                }
+            }.get,
+            &state,
+        );
+        defer testing.allocator.destroy(gauge);
+
+        try testing.expectEqual(@as(InnerType, 21), gauge.get());
+    }
 }
 
 test "gauge: optional state" {
@@ -95,7 +111,7 @@ test "gauge: optional state" {
     };
     var state = State{ .value = 20.0 };
 
-    var gauge = try Gauge(?*State).init(
+    var gauge = try Gauge(?*State, f64).init(
         testing.allocator,
         struct {
             fn get(s: *State) f64 {
@@ -110,7 +126,7 @@ test "gauge: optional state" {
 }
 
 test "gauge: non-pointer state" {
-    var gauge = try Gauge(f64).init(
+    var gauge = try Gauge(f64, f64).init(
         testing.allocator,
         struct {
             fn get(s: *f64) f64 {
@@ -133,7 +149,7 @@ test "gauge: shared state" {
     var shared_state = State{};
     defer shared_state.items.deinit();
 
-    var gauge = try Gauge(*State).init(
+    var gauge = try Gauge(*State, f64).init(
         testing.allocator,
         struct {
             fn get(state: *State) f64 {
@@ -145,7 +161,7 @@ test "gauge: shared state" {
     defer testing.allocator.destroy(gauge);
 
     var threads: [4]std.Thread = undefined;
-    for (threads, 0..) |*thread, thread_index| {
+    for (&threads, 0..) |*thread, thread_index| {
         thread.* = try std.Thread.spawn(
             .{},
             struct {
@@ -162,13 +178,13 @@ test "gauge: shared state" {
         );
     }
 
-    for (threads) |*thread| thread.join();
+    for (&threads) |*thread| thread.join();
 
     try testing.expectEqual(@as(usize, 16), @floatToInt(usize, gauge.get()));
 }
 
 test "gauge: write" {
-    var gauge = try Gauge(usize).init(
+    var gauge = try Gauge(usize, f64).init(
         testing.allocator,
         struct {
             fn get(state: *usize) f64 {

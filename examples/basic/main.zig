@@ -18,7 +18,8 @@ pub fn main() anyerror!void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     var allocator = arena.allocator();
 
-    var random = std.rand.DefaultPrng.init(@bitCast(u64, std.time.milliTimestamp())).random();
+    var prng = std.rand.DefaultPrng.init(@bitCast(u64, std.time.milliTimestamp()));
+    const random = prng.random();
 
     // Initialize a registry
     var registry = try prometheus.Registry(.{}).create(allocator);
