@@ -40,7 +40,7 @@ pub fn Gauge(comptime StateType: type, comptime Return: type) type {
         pub fn get(self: *Self) Return {
             const TypeInfo = @typeInfo(StateType);
             switch (TypeInfo) {
-                .Pointer => {
+                .Pointer, .Void => {
                     return self.callFn(self.state);
                 },
                 .Optional => {
