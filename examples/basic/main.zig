@@ -58,7 +58,7 @@ pub fn main() anyerror!void {
                     fn get(s: *State) f64 {
                         const n = s.random.intRangeAtMost(usize, 0, 2000);
                         const f = s.random.float(f64);
-                        return f * @intToFloat(f64, n);
+                        return f * @floatFromInt(f64, n);
                     }
                 }.get,
             );
@@ -76,7 +76,7 @@ pub fn main() anyerror!void {
         var i: usize = 0;
         while (i < 200) : (i += 1) {
             const duration = random.intRangeAtMost(usize, 0, 10000);
-            histogram.update(@intToFloat(f64, duration));
+            histogram.update(@floatFromInt(f64, duration));
         }
     }
 
