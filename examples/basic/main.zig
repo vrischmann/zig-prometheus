@@ -18,7 +18,7 @@ pub fn main() anyerror!void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     var allocator = arena.allocator();
 
-    var prng = std.rand.DefaultPrng.init(@bitCast(u64, std.time.milliTimestamp()));
+    var prng = std.rand.DefaultPrng.init(@bitCast(std.time.milliTimestamp()));
     const random = prng.random();
 
     // Initialize a registry
@@ -58,7 +58,7 @@ pub fn main() anyerror!void {
                     fn get(s: *State) f64 {
                         const n = s.random.intRangeAtMost(usize, 0, 2000);
                         const f = s.random.float(f64);
-                        return f * @floatFromInt(f64, n);
+                        return f * @as(f64, @floatFromInt(n));
                     }
                 }.get,
             );
@@ -76,7 +76,7 @@ pub fn main() anyerror!void {
         var i: usize = 0;
         while (i < 200) : (i += 1) {
             const duration = random.intRangeAtMost(usize, 0, 10000);
-            histogram.update(@floatFromInt(f64, duration));
+            histogram.update(@floatFromInt(duration));
         }
     }
 
