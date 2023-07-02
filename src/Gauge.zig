@@ -153,7 +153,7 @@ test "gauge: shared state" {
         testing.allocator,
         struct {
             fn get(state: *State) f64 {
-                return @floatFromInt(f64, state.items.items.len);
+                return @floatFromInt(state.items.items.len);
             }
         }.get,
         &shared_state,
@@ -180,7 +180,7 @@ test "gauge: shared state" {
 
     for (&threads) |*thread| thread.join();
 
-    try testing.expectEqual(@as(usize, 16), @intFromFloat(usize, gauge.get()));
+    try testing.expectEqual(@as(usize, 16), @as(usize, @intFromFloat(gauge.get())));
 }
 
 test "gauge: write" {
@@ -189,7 +189,7 @@ test "gauge: write" {
         struct {
             fn get(state: *usize) f64 {
                 state.* += 340;
-                return @floatFromInt(f64, state.*);
+                return @floatFromInt(state.*);
             }
         }.get,
         @as(usize, 0),

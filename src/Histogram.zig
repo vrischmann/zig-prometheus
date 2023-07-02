@@ -108,9 +108,9 @@ pub const Histogram = struct {
             self.upper += 1;
         } else {
             const idx: usize = blk: {
-                const tmp = @intFromFloat(usize, bucket_idx);
+                const tmp: usize = @intFromFloat(bucket_idx);
 
-                if (bucket_idx == @floatFromInt(f64, tmp) and tmp > 0) {
+                if (bucket_idx == @as(f64, @floatFromInt(tmp)) and tmp > 0) {
                     // Edge case for 10^n values, which must go to the lower bucket
                     // according to Prometheus logic for `le`-based histograms.
                     break :blk tmp - 1;
@@ -212,7 +212,7 @@ test "update then write" {
 
     var i: usize = 98;
     while (i < 218) : (i += 1) {
-        histogram.update(@floatFromInt(f64, i));
+        histogram.update(@floatFromInt(i));
     }
 
     var buffer = std.ArrayList(u8).init(testing.allocator);
@@ -244,7 +244,7 @@ test "update then write with labels" {
 
     var i: usize = 98;
     while (i < 218) : (i += 1) {
-        histogram.update(@floatFromInt(f64, i));
+        histogram.update(@floatFromInt(i));
     }
 
     var buffer = std.ArrayList(u8).init(testing.allocator);

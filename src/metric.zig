@@ -15,8 +15,8 @@ pub const HistogramResult = struct {
         pub fn format(self: @This(), comptime format_string: []const u8, options: fmt.FormatOptions, writer: anytype) !void {
             _ = format_string;
 
-            const as_int = @intFromFloat(u64, self.value);
-            if (@floatFromInt(f64, as_int) == self.value) {
+            const as_int: u64 = @intFromFloat(self.value);
+            if (@as(f64, @floatFromInt(as_int)) == self.value) {
                 try fmt.formatInt(as_int, 10, .lower, options, writer);
             } else {
                 try fmt.formatFloatDecimal(self.value, options, writer);

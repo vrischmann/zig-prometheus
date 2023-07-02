@@ -32,7 +32,7 @@ pub fn add(self: *Self, value: anytype) void {
         @compileError("can't add a non-number");
     }
 
-    _ = self.value.fetchAdd(@intCast(u64, value), .SeqCst);
+    _ = self.value.fetchAdd(@intCast(value), .SeqCst);
 }
 
 pub fn get(self: *const Self) u64 {
@@ -44,7 +44,7 @@ pub fn set(self: *Self, value: anytype) void {
         @compileError("can't set a non-number");
     }
 
-    _ = self.value.store(@intCast(u64, value), .SeqCst);
+    _ = self.value.store(@intCast(value), .SeqCst);
 }
 
 fn getResult(metric: *Metric, allocator: mem.Allocator) Metric.Error!Metric.Result {
