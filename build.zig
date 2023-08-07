@@ -1,5 +1,4 @@
 const std = @import("std");
-const deps = @import("deps.zig");
 
 pub fn build(b: *std.build.Builder) void {
     const target = b.standardTargetOptions(.{});
@@ -19,6 +18,10 @@ pub fn build(b: *std.build.Builder) void {
         .optimize = optimize,
     });
 
+    const module = b.createModule(.{
+        .source_file = .{ .path = "src/main.zig" },
+    });
+
     // NOTE(vincent): apple_pie is not up to date
     const examples = &[_][]const u8{
         // "apple_pie",
@@ -32,7 +35,7 @@ pub fn build(b: *std.build.Builder) void {
             .target = target,
             .optimize = optimize,
         });
-        deps.addAllTo(exe);
+        exe.addModule("prometheus", module);
         b.installArtifact(exe);
 
         const run_cmd = b.addRunArtifact(exe);
