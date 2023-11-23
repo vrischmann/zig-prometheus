@@ -9,7 +9,7 @@ const Self = @This();
 metric: Metric = Metric{
     .getResultFn = getResult,
 },
-value: std.atomic.Atomic(u64) = .{ .value = 0 },
+value: std.atomic.Value(u64) = std.atomic.Value(u64).init(0),
 
 pub fn init(allocator: mem.Allocator) !*Self {
     const self = try allocator.create(Self);
