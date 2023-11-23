@@ -71,7 +71,7 @@ pub fn Registry(comptime options: RegistryOptions) type {
             self.mutex.lock();
             defer self.mutex.unlock();
 
-            var gop = try self.metrics.getOrPut(allocator, duped_name);
+            const gop = try self.metrics.getOrPut(allocator, duped_name);
             if (!gop.found_existing) {
                 var real_metric = try Counter.init(allocator);
                 gop.value_ptr.* = &real_metric.metric;
@@ -91,7 +91,7 @@ pub fn Registry(comptime options: RegistryOptions) type {
             self.mutex.lock();
             defer self.mutex.unlock();
 
-            var gop = try self.metrics.getOrPut(allocator, duped_name);
+            const gop = try self.metrics.getOrPut(allocator, duped_name);
             if (!gop.found_existing) {
                 var real_metric = try Histogram.init(allocator);
                 gop.value_ptr.* = &real_metric.metric;
@@ -116,7 +116,7 @@ pub fn Registry(comptime options: RegistryOptions) type {
             self.mutex.lock();
             defer self.mutex.unlock();
 
-            var gop = try self.metrics.getOrPut(allocator, duped_name);
+            const gop = try self.metrics.getOrPut(allocator, duped_name);
             if (!gop.found_existing) {
                 var real_metric = try Gauge(@TypeOf(state), f64).init(allocator, callFn, state);
                 gop.value_ptr.* = &real_metric.metric;
@@ -141,7 +141,7 @@ pub fn Registry(comptime options: RegistryOptions) type {
             self.mutex.lock();
             defer self.mutex.unlock();
 
-            var gop = try self.metrics.getOrPut(allocator, duped_name);
+            const gop = try self.metrics.getOrPut(allocator, duped_name);
             if (!gop.found_existing) {
                 var real_metric = try Gauge(@TypeOf(state), u64).init(allocator, callFn, state);
                 gop.value_ptr.* = &real_metric.metric;
