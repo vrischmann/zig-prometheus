@@ -28,8 +28,9 @@ pub fn dec(self: *Self) void {
 }
 
 pub fn add(self: *Self, value: anytype) void {
-    if (!comptime std.meta.trait.isNumber(@TypeOf(value))) {
-        @compileError("can't add a non-number");
+    switch (@typeInfo(@TypeOf(value))) {
+        .Int, .Float, .ComptimeInt, .ComptimeFloat => {},
+        else => @compileError("can't add a non-number"),
     }
 
     _ = self.value.fetchAdd(@intCast(value), .SeqCst);
@@ -40,8 +41,9 @@ pub fn get(self: *const Self) u64 {
 }
 
 pub fn set(self: *Self, value: anytype) void {
-    if (!comptime std.meta.trait.isNumber(@TypeOf(value))) {
-        @compileError("can't set a non-number");
+    switch (@typeInfo(@TypeOf(value))) {
+        .Int, .Float, .ComptimeInt, .ComptimeFloat => {},
+        else => @compileError("can't set a non-number"),
     }
 
     _ = self.value.store(@intCast(value), .SeqCst);
