@@ -21,8 +21,6 @@ This library only provides the following types:
 
 If you want a quick overview of how to use this library check the [basic example program](examples/basic/main.zig). It showcases everything.
 
-There's also a more specific example which integrates with the HTTP server [Apple Pie](examples/apple_pie/main.zig). It showcases how to export metrics that are directly scrapable by Prometheus or VictoriaMetrics.
-
 # Reference
 
 ## Registry

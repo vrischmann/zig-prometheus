@@ -23,9 +23,7 @@ pub fn build(b: *std.build.Builder) void {
         .source_file = .{ .path = "src/main.zig" },
     });
 
-    // NOTE(vincent): apple_pie is not up to date
     const examples = &[_][]const u8{
-        // "apple_pie",
         "basic",
     };
 
