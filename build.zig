@@ -19,7 +19,7 @@ pub fn build(b: *std.build.Builder) void {
     });
     const run_main_tests = b.addRunArtifact(main_tests);
 
-    const module = b.createModule(.{
+    const module = b.addModule("prometheus", .{
         .source_file = .{ .path = "src/main.zig" },
     });
 
