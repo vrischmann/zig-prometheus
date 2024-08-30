@@ -29,20 +29,20 @@ pub fn dec(self: *Self) void {
 
 pub fn add(self: *Self, value: anytype) void {
     switch (@typeInfo(@TypeOf(value))) {
-        .Int, .Float, .ComptimeInt, .ComptimeFloat => {},
+        .int, .float, .comptime_int, .comptime_float => {},
         else => @compileError("can't add a non-number"),
     }
 
-    _ = self.value.fetchAdd(@intCast(value), .SeqCst);
+    _ = self.value.fetchAdd(@intCast(value), .seq_cst);
 }
 
 pub fn get(self: *const Self) u64 {
-    return self.value.load(.SeqCst);
+    return self.value.load(.seq_cst);
 }
 
 pub fn set(self: *Self, value: anytype) void {
     switch (@typeInfo(@TypeOf(value))) {
-        .Int, .Float, .ComptimeInt, .ComptimeFloat => {},
+        .int, .float, .comptime_int, .comptime_float => {},
         else => @compileError("can't set a non-number"),
     }
 
@@ -52,7 +52,7 @@ pub fn set(self: *Self, value: anytype) void {
 fn getResult(metric: *Metric, allocator: mem.Allocator) Metric.Error!Metric.Result {
     _ = allocator;
 
-    const self = @fieldParentPtr(Self, "metric", metric);
+    const self: *Self = @fieldParentPtr("metric", metric);
 
     return Metric.Result{ .counter = self.get() };
 }

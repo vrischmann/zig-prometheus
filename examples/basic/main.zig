@@ -2,7 +2,7 @@ const std = @import("std");
 
 const prometheus = @import("prometheus");
 
-fn getRandomString(allocator: std.mem.Allocator, random: std.rand.Random, n: usize) ![]const u8 {
+fn getRandomString(allocator: std.mem.Allocator, random: std.Random, n: usize) ![]const u8 {
     const alphabet = "abcdefghijklmnopqrstuvwxyz";
 
     const items = try allocator.alloc(u8, n);
@@ -18,7 +18,7 @@ pub fn main() anyerror!void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     const allocator = arena.allocator();
 
-    var prng = std.rand.DefaultPrng.init(@bitCast(std.time.milliTimestamp()));
+    var prng = std.Random.DefaultPrng.init(@bitCast(std.time.milliTimestamp()));
     const random = prng.random();
 
     // Initialize a registry
@@ -41,7 +41,7 @@ pub fn main() anyerror!void {
     // Get some gauges sharing the same state.
     {
         const State = struct {
-            random: std.rand.Random,
+            random: std.Random,
         };
         var state = State{ .random = random };
 

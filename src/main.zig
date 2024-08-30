@@ -77,7 +77,7 @@ pub fn Registry(comptime options: RegistryOptions) type {
                 gop.value_ptr.* = &real_metric.metric;
             }
 
-            return @fieldParentPtr(Counter, "metric", gop.value_ptr.*);
+            return @fieldParentPtr("metric", gop.value_ptr.*);
         }
 
         pub fn getOrCreateHistogram(self: *Self, name: []const u8) GetMetricError!*Histogram {
@@ -97,7 +97,7 @@ pub fn Registry(comptime options: RegistryOptions) type {
                 gop.value_ptr.* = &real_metric.metric;
             }
 
-            return @fieldParentPtr(Histogram, "metric", gop.value_ptr.*);
+            return @fieldParentPtr("metric", gop.value_ptr.*);
         }
 
         pub fn getOrCreateGauge(
@@ -122,7 +122,7 @@ pub fn Registry(comptime options: RegistryOptions) type {
                 gop.value_ptr.* = &real_metric.metric;
             }
 
-            return @fieldParentPtr(Gauge(@TypeOf(state), f64), "metric", gop.value_ptr.*);
+            return @fieldParentPtr("metric", gop.value_ptr.*);
         }
 
         pub fn getOrCreateGaugeInt(
@@ -147,7 +147,7 @@ pub fn Registry(comptime options: RegistryOptions) type {
                 gop.value_ptr.* = &real_metric.metric;
             }
 
-            return @fieldParentPtr(Gauge(@TypeOf(state), u64), "metric", gop.value_ptr.*);
+            return @fieldParentPtr("metric", gop.value_ptr.*);
         }
 
         pub fn write(self: *Self, allocator: mem.Allocator, writer: anytype) !void {

@@ -1,26 +1,26 @@
 const std = @import("std");
 
-pub fn build(b: *std.build.Builder) void {
+pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
     const lib = b.addStaticLibrary(.{
         .name = "zig-prometheus",
-        .root_source_file = .{ .path = "src/main.zig" },
+        .root_source_file = b.path("src/main.zig"),
         .target = target,
         .optimize = optimize,
     });
     b.installArtifact(lib);
     const main_tests = b.addTest(.{
         .name = "main",
-        .root_source_file = .{ .path = "src/main.zig" },
+        .root_source_file = b.path("src/main.zig"),
         .target = target,
         .optimize = optimize,
     });
     const run_main_tests = b.addRunArtifact(main_tests);
 
     const module = b.addModule("prometheus", .{
-        .source_file = .{ .path = "src/main.zig" },
+        .root_source_file = b.path("src/main.zig"),
     });
 
     const examples = &[_][]const u8{
@@ -30,11 +30,11 @@ pub fn build(b: *std.build.Builder) void {
     inline for (examples) |name| {
         var exe = b.addExecutable(.{
             .name = "example-" ++ name,
-            .root_source_file = .{ .path = "examples/" ++ name ++ "/main.zig" },
+            .root_source_file = b.path("examples/" ++ name ++ "/main.zig"),
             .target = target,
             .optimize = optimize,
         });
-        exe.addModule("prometheus", module);
+        exe.root_module.addImport("prometheus", module);
         b.installArtifact(exe);
 
         const run_cmd = b.addRunArtifact(exe);

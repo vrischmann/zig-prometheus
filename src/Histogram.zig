@@ -140,7 +140,7 @@ pub const Histogram = struct {
     }
 
     fn getResult(metric: *Metric, allocator: mem.Allocator) Metric.Error!Metric.Result {
-        const self = @fieldParentPtr(Histogram, "metric", metric);
+        const self: *Histogram = @fieldParentPtr("metric", metric);
 
         // Arbitrary maximum capacity
         var buckets = try std.ArrayList(HistogramResult.Bucket).initCapacity(allocator, 16);
