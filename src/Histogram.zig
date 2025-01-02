@@ -13,14 +13,8 @@ const buckets_per_decimal = 18;
 const decimal_buckets_count = e10_max - e10_min;
 const buckets_count = decimal_buckets_count * buckets_per_decimal;
 
-const lower_bucket_range = blk: {
-    var buf: [64]u8 = undefined;
-    break :blk fmt.bufPrint(&buf, "0...{e:.3}", .{math.pow(f64, 10, e10_min)}) catch unreachable;
-};
-const upper_bucket_range = blk: {
-    var buf: [64]u8 = undefined;
-    break :blk fmt.bufPrint(&buf, "{e:.3}...+Inf", .{math.pow(f64, 10, e10_max)}) catch unreachable;
-};
+const lower_bucket_range = fmt.comptimePrint("0...{e:.3}", .{math.pow(f64, 10, e10_min)});
+const upper_bucket_range = fmt.comptimePrint("{e:.3}...+Inf", .{math.pow(f64, 10, e10_max)});
 
 const bucket_ranges: [buckets_count][]const u8 = blk: {
     const bucket_multiplier = math.pow(f64, 10.0, 1.0 / @as(f64, buckets_per_decimal));
@@ -50,16 +44,16 @@ const bucket_ranges: [buckets_count][]const u8 = blk: {
 };
 
 test "bucket ranges" {
-    try testing.expectEqualStrings("0...1.000e-09", lower_bucket_range);
-    try testing.expectEqualStrings("1.000e+18...+Inf", upper_bucket_range);
+    try testing.expectEqualStrings("0...1.000e-9", lower_bucket_range);
+    try testing.expectEqualStrings("1.000e18...+Inf", upper_bucket_range);
 
-    try testing.expectEqualStrings("1.000e-09...1.136e-09", bucket_ranges[0]);
-    try testing.expectEqualStrings("1.136e-09...1.292e-09", bucket_ranges[1]);
-    try testing.expectEqualStrings("8.799e-09...1.000e-08", bucket_ranges[buckets_per_decimal - 1]);
-    try testing.expectEqualStrings("1.000e-08...1.136e-08", bucket_ranges[buckets_per_decimal]);
-    try testing.expectEqualStrings("8.799e-01...1.000e+00", bucket_ranges[buckets_per_decimal * (-e10_min) - 1]);
-    try testing.expectEqualStrings("1.000e+00...1.136e+00", bucket_ranges[buckets_per_decimal * (-e10_min)]);
-    try testing.expectEqualStrings("8.799e+17...1.000e+18", bucket_ranges[buckets_per_decimal * (e10_max - e10_min) - 1]);
+    try testing.expectEqualStrings("1.000e-9...1.136e-9", bucket_ranges[0]);
+    try testing.expectEqualStrings("1.136e-9...1.292e-9", bucket_ranges[1]);
+    try testing.expectEqualStrings("8.799e-9...1.000e-8", bucket_ranges[buckets_per_decimal - 1]);
+    try testing.expectEqualStrings("1.000e-8...1.136e-8", bucket_ranges[buckets_per_decimal]);
+    try testing.expectEqualStrings("8.799e-1...1.000e0", bucket_ranges[buckets_per_decimal * (-e10_min) - 1]);
+    try testing.expectEqualStrings("1.000e0...1.136e0", bucket_ranges[buckets_per_decimal * (-e10_min)]);
+    try testing.expectEqualStrings("8.799e17...1.000e18", bucket_ranges[buckets_per_decimal * (e10_max - e10_min) - 1]);
 }
 
 /// Histogram based on https://github.com/VictoriaMetrics/metrics/blob/master/histogram.go.
@@ -140,7 +134,7 @@ pub const Histogram = struct {
     }
 
     fn getResult(metric: *Metric, allocator: mem.Allocator) Metric.Error!Metric.Result {
-        const self = @fieldParentPtr(Histogram, "metric", metric);
+        const self: *Histogram = @fieldParentPtr("metric", metric);
 
         // Arbitrary maximum capacity
         var buckets = try std.ArrayList(HistogramResult.Bucket).initCapacity(allocator, 16);
@@ -222,14 +216,14 @@ test "update then write" {
     try metric.write(testing.allocator, buffer.writer(), "myhistogram");
 
     const exp =
-        \\myhistogram_bucket{vmrange="8.799e+01...1.000e+02"} 3
-        \\myhistogram_bucket{vmrange="1.000e+02...1.136e+02"} 13
-        \\myhistogram_bucket{vmrange="1.136e+02...1.292e+02"} 16
-        \\myhistogram_bucket{vmrange="1.292e+02...1.468e+02"} 17
-        \\myhistogram_bucket{vmrange="1.468e+02...1.668e+02"} 20
-        \\myhistogram_bucket{vmrange="1.668e+02...1.896e+02"} 23
-        \\myhistogram_bucket{vmrange="1.896e+02...2.154e+02"} 26
-        \\myhistogram_bucket{vmrange="2.154e+02...2.448e+02"} 2
+        \\myhistogram_bucket{vmrange="8.799e1...1.000e2"} 3
+        \\myhistogram_bucket{vmrange="1.000e2...1.136e2"} 13
+        \\myhistogram_bucket{vmrange="1.136e2...1.292e2"} 16
+        \\myhistogram_bucket{vmrange="1.292e2...1.468e2"} 17
+        \\myhistogram_bucket{vmrange="1.468e2...1.668e2"} 20
+        \\myhistogram_bucket{vmrange="1.668e2...1.896e2"} 23
+        \\myhistogram_bucket{vmrange="1.896e2...2.154e2"} 26
+        \\myhistogram_bucket{vmrange="2.154e2...2.448e2"} 2
         \\myhistogram_sum 18900
         \\myhistogram_count 120
         \\
@@ -254,14 +248,14 @@ test "update then write with labels" {
     try metric.write(testing.allocator, buffer.writer(), "myhistogram{route=\"/api/v2/users\"}");
 
     const exp =
-        \\myhistogram_bucket{route="/api/v2/users",vmrange="8.799e+01...1.000e+02"} 3
-        \\myhistogram_bucket{route="/api/v2/users",vmrange="1.000e+02...1.136e+02"} 13
-        \\myhistogram_bucket{route="/api/v2/users",vmrange="1.136e+02...1.292e+02"} 16
-        \\myhistogram_bucket{route="/api/v2/users",vmrange="1.292e+02...1.468e+02"} 17
-        \\myhistogram_bucket{route="/api/v2/users",vmrange="1.468e+02...1.668e+02"} 20
-        \\myhistogram_bucket{route="/api/v2/users",vmrange="1.668e+02...1.896e+02"} 23
-        \\myhistogram_bucket{route="/api/v2/users",vmrange="1.896e+02...2.154e+02"} 26
-        \\myhistogram_bucket{route="/api/v2/users",vmrange="2.154e+02...2.448e+02"} 2
+        \\myhistogram_bucket{route="/api/v2/users",vmrange="8.799e1...1.000e2"} 3
+        \\myhistogram_bucket{route="/api/v2/users",vmrange="1.000e2...1.136e2"} 13
+        \\myhistogram_bucket{route="/api/v2/users",vmrange="1.136e2...1.292e2"} 16
+        \\myhistogram_bucket{route="/api/v2/users",vmrange="1.292e2...1.468e2"} 17
+        \\myhistogram_bucket{route="/api/v2/users",vmrange="1.468e2...1.668e2"} 20
+        \\myhistogram_bucket{route="/api/v2/users",vmrange="1.668e2...1.896e2"} 23
+        \\myhistogram_bucket{route="/api/v2/users",vmrange="1.896e2...2.154e2"} 26
+        \\myhistogram_bucket{route="/api/v2/users",vmrange="2.154e2...2.448e2"} 2
         \\myhistogram_sum{route="/api/v2/users"} 18900
         \\myhistogram_count{route="/api/v2/users"} 120
         \\

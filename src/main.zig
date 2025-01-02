@@ -77,7 +77,7 @@ pub fn Registry(comptime options: RegistryOptions) type {
                 gop.value_ptr.* = &real_metric.metric;
             }
 
-            return @fieldParentPtr(Counter, "metric", gop.value_ptr.*);
+            return @fieldParentPtr("metric", gop.value_ptr.*);
         }
 
         pub fn getOrCreateHistogram(self: *Self, name: []const u8) GetMetricError!*Histogram {
@@ -97,7 +97,7 @@ pub fn Registry(comptime options: RegistryOptions) type {
                 gop.value_ptr.* = &real_metric.metric;
             }
 
-            return @fieldParentPtr(Histogram, "metric", gop.value_ptr.*);
+            return @fieldParentPtr("metric", gop.value_ptr.*);
         }
 
         pub fn getOrCreateGauge(
@@ -122,7 +122,7 @@ pub fn Registry(comptime options: RegistryOptions) type {
                 gop.value_ptr.* = &real_metric.metric;
             }
 
-            return @fieldParentPtr(Gauge(@TypeOf(state), f64), "metric", gop.value_ptr.*);
+            return @fieldParentPtr("metric", gop.value_ptr.*);
         }
 
         pub fn getOrCreateGaugeInt(
@@ -147,7 +147,7 @@ pub fn Registry(comptime options: RegistryOptions) type {
                 gop.value_ptr.* = &real_metric.metric;
             }
 
-            return @fieldParentPtr(Gauge(@TypeOf(state), u64), "metric", gop.value_ptr.*);
+            return @fieldParentPtr("metric", gop.value_ptr.*);
         }
 
         pub fn write(self: *Self, allocator: mem.Allocator, writer: anytype) !void {
@@ -217,9 +217,9 @@ test "registry write" {
 
     const exp1 =
         \\http_conn_pool_size 4.000000
-        \\http_request_size_bucket{vmrange="1.292e+02...1.468e+02"} 1
-        \\http_request_size_bucket{vmrange="4.642e+02...5.275e+02"} 1
-        \\http_request_size_bucket{vmrange="1.136e+03...1.292e+03"} 1
+        \\http_request_size_bucket{vmrange="1.292e2...1.468e2"} 1
+        \\http_request_size_bucket{vmrange="4.642e2...5.275e2"} 1
+        \\http_request_size_bucket{vmrange="1.136e3...1.292e3"} 1
         \\http_request_size_sum 1870.360000
         \\http_request_size_count 3
         \\http_requests 2
@@ -228,9 +228,9 @@ test "registry write" {
 
     const exp2 =
         \\http_conn_pool_size{route="/api/v2/users"} 4.000000
-        \\http_request_size_bucket{route="/api/v2/users",vmrange="1.292e+02...1.468e+02"} 1
-        \\http_request_size_bucket{route="/api/v2/users",vmrange="4.642e+02...5.275e+02"} 1
-        \\http_request_size_bucket{route="/api/v2/users",vmrange="1.136e+03...1.292e+03"} 1
+        \\http_request_size_bucket{route="/api/v2/users",vmrange="1.292e2...1.468e2"} 1
+        \\http_request_size_bucket{route="/api/v2/users",vmrange="4.642e2...5.275e2"} 1
+        \\http_request_size_bucket{route="/api/v2/users",vmrange="1.136e3...1.292e3"} 1
         \\http_request_size_sum{route="/api/v2/users"} 1870.360000
         \\http_request_size_count{route="/api/v2/users"} 3
         \\http_requests{route="/api/v2/users"} 2

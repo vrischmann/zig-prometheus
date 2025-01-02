@@ -1,3 +1,4 @@
 zig-*
+.zig-cache
 .zigmod
 deps.zig
