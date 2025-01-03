@@ -20,11 +20,11 @@ pub fn init(allocator: mem.Allocator) !*Self {
 }
 
 pub fn inc(self: *Self) void {
-    _ = self.value.fetchAdd(1, .SeqCst);
+    _ = self.value.fetchAdd(1, .seq_cst);
 }
 
 pub fn dec(self: *Self) void {
-    _ = self.value.fetchSub(1, .SeqCst);
+    _ = self.value.fetchSub(1, .seq_cst);
 }
 
 pub fn add(self: *Self, value: anytype) void {
@@ -33,11 +33,11 @@ pub fn add(self: *Self, value: anytype) void {
         else => @compileError("can't add a non-number"),
     }
 
-    _ = self.value.fetchAdd(@intCast(value), .SeqCst);
+    _ = self.value.fetchAdd(@intCast(value), .seq_cst);
 }
 
 pub fn get(self: *const Self) u64 {
-    return self.value.load(.SeqCst);
+    return self.value.load(.seq_cst);
 }
 
 pub fn set(self: *Self, value: anytype) void {
@@ -46,13 +46,13 @@ pub fn set(self: *Self, value: anytype) void {
         else => @compileError("can't set a non-number"),
     }
 
-    _ = self.value.store(@intCast(value), .SeqCst);
+    _ = self.value.store(@intCast(value), .seq_cst);
 }
 
 fn getResult(metric: *Metric, allocator: mem.Allocator) Metric.Error!Metric.Result {
     _ = allocator;
 
-    const self = @fieldParentPtr(Self, "metric", metric);
+    const self: *Self = @fieldParentPtr("metric", metric);
 
     return Metric.Result{ .counter = self.get() };
 }

@@ -19,7 +19,13 @@ pub const HistogramResult = struct {
             if (@as(f64, @floatFromInt(as_int)) == self.value) {
                 try fmt.formatInt(as_int, 10, .lower, options, writer);
             } else {
-                try fmt.formatFloatDecimal(self.value, options, writer);
+                // FIXME: Use the writer directly once the formatFloat API accepts a writer
+                var buf: [fmt.format_float.bufferSize(.decimal, @TypeOf(self.value))]u8 = undefined;
+                const formatted = try fmt.formatFloat(&buf, self.value, .{
+                    .mode = .decimal,
+                    .precision = options.precision,
+                });
+                try writer.writeAll(formatted);
             }
         }
     };
@@ -30,7 +36,7 @@ pub const HistogramResult = struct {
 };
 
 pub const Metric = struct {
-    pub const Error = error{OutOfMemory} || std.os.WriteError || std.http.Server.Response.Writer.Error;
+    pub const Error = error{OutOfMemory} || std.posix.WriteError || std.http.Server.Response.WriteError;
 
     pub const Result = union(enum) {
         const Self = @This();

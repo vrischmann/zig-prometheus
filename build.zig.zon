@@ -1,4 +1,12 @@
 .{
     .name = "prometheus",
     .version = "0.0.1",
+    .paths = .{
+        "examples",
+        "src",
+        "build.zig",
+        "build.zig.zon",
+        "LICENSE",
+        "README.md",
+    },
 }
