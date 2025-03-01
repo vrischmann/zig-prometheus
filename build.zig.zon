@@ -1,6 +1,8 @@
 .{
-    .name = "prometheus",
+    .name = .prometheus,
+    .fingerprint = 0x579d3a7b0adc830e,
     .version = "0.0.1",
+    .minimum_zig_version = "0.14.0",
     .paths = .{
         "examples",
         "src",
